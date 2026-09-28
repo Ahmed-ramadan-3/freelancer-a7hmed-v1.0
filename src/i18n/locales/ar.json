@@ -1,0 +1,124 @@
+{
+  "common": {
+    "loading": "جارٍ التحميل...",
+    "welcome": "مرحبًا بك في {name}",
+    "retry": "إعادة المحاولة",
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "close": "إغلاق",
+    "search": "ابحث عن ملف...",
+    "back": "رجوع",
+    "confirm": "تأكيد",
+    "copied": "تم النسخ",
+    "yes": "نعم",
+    "no": "لا"
+  },
+  "nav": {
+    "library": "المكتبة",
+    "login": "تسجيل الدخول",
+    "logout": "تسجيل الخروج",
+    "admin": "لوحة التحكم"
+  },
+  "home": {
+    "title": "المكتبة",
+    "subtitle": "تصفّح الملفات والدورات المتاحة وحمّل ما تحتاجه.",
+    "allCategories": "الكل",
+    "sortNewest": "الأحدث",
+    "sortOldest": "الأقدم",
+    "sortNameAz": "الاسم (أ-ي)",
+    "noResults": "لا توجد ملفات تطابق بحثك",
+    "noResultsHint": "جرّب كلمة بحث مختلفة أو اختر تصنيفًا آخر.",
+    "featuredLabel": "مميز",
+    "viewDetails": "عرض التفاصيل"
+  },
+  "resource": {
+    "download": "تحميل",
+    "platform": "النظام",
+    "notFound": "لم يتم العثور على هذا المورد",
+    "notFoundHint": "قد يكون الرابط غير صحيح أو تمت إزالة المورد.",
+    "related": "موارد ذات صلة"
+  },
+  "download": {
+    "title": "تحميل الملف",
+    "preparing": "جاري تجهيز رابط التحميل...",
+    "ready": "الرابط جاهز",
+    "openDrive": "فتح Google Drive",
+    "disclaimer": "سيتم فتح صفحة الملف على Google Drive، ومنه يمكنك بدء التحميل."
+  },
+  "file": {
+    "download": "تحميل الملف",
+    "downloading": "جارٍ التحميل...",
+    "share": "مشاركة",
+    "copyLink": "نسخ الرابط",
+    "size": "الحجم",
+    "type": "النوع",
+    "category": "التصنيف",
+    "uploadedOn": "تاريخ الرفع",
+    "version": "الإصدار",
+    "related": "ملفات ذات صلة",
+    "notFound": "لم يتم العثور على هذا الملف",
+    "notFoundHint": "قد يكون الرابط غير صحيح أو تم حذف الملف.",
+    "notDownloadable": "هذا الملف غير متاح للتحميل حاليًا"
+  },
+  "upload": {
+    "title": "رفع ملف جديد",
+    "dropzoneLabel": "اسحب وأفلت الملف هنا",
+    "dropzoneHint": "أو اضغط لاختيار ملف من جهازك",
+    "browse": "اختيار ملف",
+    "titleAr": "العنوان (عربي)",
+    "titleEn": "العنوان (إنجليزي)",
+    "descriptionAr": "الوصف (عربي)",
+    "descriptionEn": "الوصف (إنجليزي)",
+    "category": "التصنيف",
+    "visibility": "الظهور للعامة",
+    "downloadable": "قابل للتحميل",
+    "submit": "رفع الملف",
+    "uploading": "جارٍ الرفع...",
+    "success": "تم رفع الملف بنجاح",
+    "failed": "فشل رفع الملف",
+    "fileTooLarge": "حجم الملف أكبر من الحد المسموح",
+    "fileTypeNotAllowed": "نوع الملف غير مدعوم",
+    "selectFileFirst": "الرجاء اختيار ملف أولاً"
+  },
+  "admin": {
+    "dashboard": "لوحة التحكم",
+    "files": "الملفات",
+    "upload": "رفع ملف",
+    "users": "المستخدمون",
+    "totalFiles": "إجمالي الملفات",
+    "totalCategories": "عدد التصنيفات",
+    "recentUploads": "أحدث الملفات المرفوعة",
+    "inviteAdmin": "دعوة مشرف",
+    "email": "البريد الإلكتروني",
+    "role": "الصلاحية",
+    "roleOwner": "مالك",
+    "roleAdmin": "مشرف",
+    "roleViewer": "مشاهد",
+    "sendInvite": "إرسال الدعوة",
+    "confirmDelete": "هل تريد حذف هذا الملف نهائيًا؟",
+    "confirmDeleteHint": "لا يمكن التراجع عن هذا الإجراء.",
+    "demoModeBanner": "وضع تجريبي محلي: لم يتم ربط قاعدة بيانات حقيقية بعد. أي تعديلات هنا محفوظة على متصفحك فقط.",
+    "ownerOnly": "هذا القسم متاح للمالك فقط."
+  },
+  "auth": {
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "signIn": "تسجيل الدخول",
+    "signingIn": "جارٍ تسجيل الدخول...",
+    "invalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+    "requiredField": "هذا الحقل مطلوب",
+    "demoHint": "وضع تجريبي: استخدم owner@example.com بأي كلمة مرور لتسجيل الدخول كمالك."
+  },
+  "errors": {
+    "generic": "حدث خطأ غير متوقع، الرجاء المحاولة مرة أخرى.",
+    "unauthorized": "ليست لديك صلاحية للقيام بهذا الإجراء.",
+    "notFoundPage": "الصفحة غير موجودة",
+    "notFoundPageHint": "الرابط الذي حاولت فتحه غير موجود.",
+    "goHome": "العودة إلى الصفحة الرئيسية"
+  },
+  "footer": {
+    "rights": "جميع الحقوق محفوظة"
+  }
+}

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#12142B" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="description" content="متجر موارد رقمية صغير: تصفّح، اختر، وحمّل عبر Google Drive." />
+
+    <!-- Static fallback Open Graph tags. This is a static SPA with no
+         server-side rendering, so these can't vary per resource - they
+         describe the store as a whole. Update them by hand if the store's
+         name/description changes (they read the same values you'd set for
+         VITE_SITE_NAME / VITE_SITE_DESCRIPTION_AR in .env). -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="SITE_NAME" />
+    <meta property="og:description" content="متجر موارد رقمية صغير: تصفّح، اختر، وحمّل عبر Google Drive." />
+
+    <!-- Fonts are preconnected + loaded with display=swap so text renders
+         immediately in a fallback face rather than blocking first paint. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Replaced at runtime by src/config/site.ts once the app mounts, so the
+         document title is correct even before the branding config loads. -->
+    <title>SITE_NAME</title>
+  </head>
+  <body>
+    <div id="root">
+      <!-- Static, no-JS fallback splash. React replaces this immediately on
+           mount; it exists so the first paint isn't a blank white screen. -->
+      <div id="static-splash">
+        <span id="static-splash-mark">📦</span>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

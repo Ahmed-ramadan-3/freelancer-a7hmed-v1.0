@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+ * DESIGN TOKENS
+ * ---------------------------------------------------------------------------
+ * "Maktaba" palette: a deep ink/indigo base evokes a reading room at night,
+ * a brass/amber accent nods to library lamps and book bindings, and a jewel
+ * teal gives a second, cooler accent for links and secondary emphasis. Values
+ * are RGB triplets (no `rgb()` wrapper) so Tailwind can apply opacity via
+ * `<alpha-value>` in tailwind.config.ts.
+ * ------------------------------------------------------------------------ */
+:root {
+  --color-paper: 241 239 231; /* warm parchment background, light mode */
+  --color-ink: 20 22 43; /* deep indigo-navy - primary text on paper */
+  --color-surface: 255 255 254; /* card surfaces, light mode */
+  --color-surface-raised: 255 255 254;
+  --color-border: 223 219 206;
+  --color-muted: 108 106 128;
+
+  --color-accent: 196 145 58; /* brass/amber */
+  --color-accent-ink: 20 22 43; /* text placed on accent background */
+  --color-teal: 27 106 108; /* jewel teal */
+  --color-teal-ink: 255 255 254;
+
+  --color-danger: 176 58 46;
+  --color-success: 60 122 84;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  --shadow-soft: 0 1px 2px rgb(20 22 43 / 0.06), 0 1px 1px rgb(20 22 43 / 0.04);
+  --shadow-raised: 0 8px 24px -8px rgb(20 22 43 / 0.18);
+}
+
+/* Dark mode overrides. Applied when <html> carries the `dark` class, which
+ * useTheme (src/hooks/useTheme.ts) manages based on the user's saved
+ * preference or the OS prefers-color-scheme when set to "system". */
+.dark {
+  --color-paper: 15 16 30;
+  --color-ink: 237 235 226;
+  --color-surface: 23 25 45;
+  --color-surface-raised: 29 31 54;
+  --color-border: 46 48 74;
+  --color-muted: 150 148 168;
+
+  --color-accent: 214 165 84;
+  --color-accent-ink: 15 16 30;
+  --color-teal: 84 179 178;
+  --color-teal-ink: 12 26 26;
+
+  --color-danger: 224 110 97;
+  --color-success: 112 191 148;
+
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.3), 0 1px 1px rgb(0 0 0 / 0.24);
+  --shadow-raised: 0 8px 28px -8px rgb(0 0 0 / 0.55);
+}
+
+html {
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-paper text-ink antialiased;
+  font-feature-settings: 'ss01' on;
+}
+
+/* Visible, deliberate keyboard focus - never suppressed for aesthetics. */
+:focus-visible {
+  outline: 2px solid rgb(var(--color-accent));
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+::selection {
+  background: rgb(var(--color-accent) / 0.28);
+}
+
+/* Static no-JS splash shown before React mounts (see index.html). */
+#static-splash {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(var(--color-paper));
+  font-size: 2.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Slim, quiet scrollbar - avoids the default chunky browser bar without
+ * being a flashy custom-scrollbar effect. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--color-border)) transparent;
+}

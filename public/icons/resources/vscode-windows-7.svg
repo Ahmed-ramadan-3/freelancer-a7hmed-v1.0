@@ -1,0 +1,14 @@
+<!--
+  Generic, original placeholder icon for the "Visual Studio Code for
+  Windows 7" resource - a rounded window with a code-bracket mark, drawn in
+  the site's own accent/teal palette. This is deliberately NOT a
+  reproduction of Microsoft's Visual Studio Code logo (which is a
+  registered trademark); see README.md "Icons" for how to swap in the
+  official asset yourself if you have the rights to use it.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Code editor resource icon">
+  <rect x="4" y="4" width="56" height="56" rx="14" fill="#1B6A6C" />
+  <path d="M23 22 L13 32 L23 42" fill="none" stroke="#F1EFE7" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M41 22 L51 32 L41 42" fill="none" stroke="#F1EFE7" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M35 17 L29 47" fill="none" stroke="#C4913A" stroke-width="4.5" stroke-linecap="round" />
+</svg>

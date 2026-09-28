@@ -1,0 +1,124 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "welcome": "Welcome to {name}",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "search": "Search for a file...",
+    "back": "Back",
+    "confirm": "Confirm",
+    "copied": "Copied",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "nav": {
+    "library": "Library",
+    "login": "Log in",
+    "logout": "Log out",
+    "admin": "Admin"
+  },
+  "home": {
+    "title": "Library",
+    "subtitle": "Browse the available files and courses and download what you need.",
+    "allCategories": "All",
+    "sortNewest": "Newest",
+    "sortOldest": "Oldest",
+    "sortNameAz": "Name (A-Z)",
+    "noResults": "No files match your search",
+    "noResultsHint": "Try a different search term or category.",
+    "featuredLabel": "Featured",
+    "viewDetails": "View details"
+  },
+  "resource": {
+    "download": "Download",
+    "platform": "Platform",
+    "notFound": "This resource could not be found",
+    "notFoundHint": "The link may be incorrect, or the resource was removed.",
+    "related": "Related resources"
+  },
+  "download": {
+    "title": "Download file",
+    "preparing": "Preparing your download link...",
+    "ready": "Your link is ready",
+    "openDrive": "Open Google Drive",
+    "disclaimer": "This opens the file's page on Google Drive, where you can start the download."
+  },
+  "file": {
+    "download": "Download file",
+    "downloading": "Downloading...",
+    "share": "Share",
+    "copyLink": "Copy link",
+    "size": "Size",
+    "type": "Type",
+    "category": "Category",
+    "uploadedOn": "Uploaded on",
+    "version": "Version",
+    "related": "Related resources",
+    "notFound": "This file could not be found",
+    "notFoundHint": "The link may be incorrect, or the file was removed.",
+    "notDownloadable": "This file is not currently available for download"
+  },
+  "upload": {
+    "title": "Upload a new file",
+    "dropzoneLabel": "Drag and drop a file here",
+    "dropzoneHint": "or click to choose a file from your device",
+    "browse": "Choose file",
+    "titleAr": "Title (Arabic)",
+    "titleEn": "Title (English)",
+    "descriptionAr": "Description (Arabic)",
+    "descriptionEn": "Description (English)",
+    "category": "Category",
+    "visibility": "Publicly visible",
+    "downloadable": "Downloadable",
+    "submit": "Upload file",
+    "uploading": "Uploading...",
+    "success": "File uploaded successfully",
+    "failed": "Upload failed",
+    "fileTooLarge": "File size exceeds the allowed limit",
+    "fileTypeNotAllowed": "This file type is not supported",
+    "selectFileFirst": "Please choose a file first"
+  },
+  "admin": {
+    "dashboard": "Dashboard",
+    "files": "Files",
+    "upload": "Upload",
+    "users": "Users",
+    "totalFiles": "Total files",
+    "totalCategories": "Categories",
+    "recentUploads": "Recently uploaded",
+    "inviteAdmin": "Invite an admin",
+    "email": "Email",
+    "role": "Role",
+    "roleOwner": "Owner",
+    "roleAdmin": "Admin",
+    "roleViewer": "Viewer",
+    "sendInvite": "Send invitation",
+    "confirmDelete": "Delete this file permanently?",
+    "confirmDeleteHint": "This action cannot be undone.",
+    "demoModeBanner": "Local demo mode: no real database is connected yet. Changes here are saved only in your browser.",
+    "ownerOnly": "This section is available to the owner only."
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign in",
+    "signingIn": "Signing in...",
+    "invalidCredentials": "Incorrect email or password",
+    "requiredField": "This field is required",
+    "demoHint": "Demo mode: sign in as owner@example.com with any password."
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "unauthorized": "You don't have permission to do that.",
+    "notFoundPage": "Page not found",
+    "notFoundPageHint": "The link you followed doesn't exist.",
+    "goHome": "Back to home"
+  },
+  "footer": {
+    "rights": "All rights reserved"
+  }
+}
