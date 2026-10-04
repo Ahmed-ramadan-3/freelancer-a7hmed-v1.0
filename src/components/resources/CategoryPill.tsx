@@ -6,6 +6,7 @@ import {
   File,
   FileText,
   GraduationCap,
+  Image as ImageIcon,
   Shapes,
   Video,
   Wrench,
@@ -13,6 +14,13 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+/**
+ * Shared icon lookup used both for category pills (src/config/categories.ts)
+ * and resource-type definitions (src/config/resourceTypes.ts) - the two
+ * configs intentionally share this one icon-key vocabulary so adding an
+ * entry to either config never requires touching this file, as long as it
+ * reuses an existing key. `image` was added for the `image` CatalogResourceType.
+ */
 const iconMap: Record<string, LucideIcon> = {
   'app-window': AppWindow,
   wrench: Wrench,
@@ -23,6 +31,7 @@ const iconMap: Record<string, LucideIcon> = {
   'graduation-cap': GraduationCap,
   archive: Archive,
   file: File,
+  image: ImageIcon,
   shapes: Shapes,
 };
 

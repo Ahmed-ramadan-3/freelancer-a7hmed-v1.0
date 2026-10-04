@@ -2,16 +2,29 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Download, FileWarning } from 'lucide-react';
 import { useTranslation } from '@/i18n';
-import { getResourceById, getRelatedResources } from '@/data/resources';
+import { getResourceById, getRelatedResources } from '@/data/resourceStore';
 import { categoryDefinitions } from '@/config/categories';
+import { getActionLabelKey } from '@/lib/resourceModel';
+import { getProviderLabel } from '@/lib/provider';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { CategoryIcon } from '@/components/resources/CategoryPill';
 import { ResourceCard } from '@/components/resources/ResourceCard';
+import { ResourcePreview } from '@/components/resources/ResourcePreview';
 import { DownloadPreparationModal } from '@/components/download/DownloadPreparationModal';
 
+/**
+ * The single resource page (master spec, "Resource Details / Preview"):
+ * - `download-only` -> details + a Download button only, no in-site preview.
+ * - `preview-download` -> an in-site preview (ResourcePreview) AND a
+ *   Download button, both shown.
+ * - `view-only` (courses) -> an in-site preview only. No Download button is
+ *   rendered anywhere on this page, and the raw `externalUrl` is never
+ *   printed as visible text - only the provider's display name is (e.g.
+ *   "Google Drive"), via getProviderLabel().
+ */
 export function ResourceDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const { t, language } = useTranslation();
@@ -36,6 +49,10 @@ export function ResourceDetailsPage() {
 
   const category = categoryDefinitions.find((c) => c.slug === resource.category);
   const related = getRelatedResources(resource);
+  const providerLabel = getProviderLabel(resource.provider);
+  const hasPreview = resource.accessMode !== 'download-only' && resource.previewMode !== 'none';
+  const hasDownload = resource.accessMode !== 'view-only';
+  const actionLabel = t(getActionLabelKey(resource));
 
   return (
     <div className="flex flex-col gap-8">
@@ -54,9 +71,12 @@ export function ResourceDetailsPage() {
               <div className="mt-1.5 flex flex-wrap gap-2">
                 {category && <Badge tone="accent">{category.label[language]}</Badge>}
                 {resource.platform && <Badge tone="neutral">{resource.platform}</Badge>}
+                <Badge tone="neutral">{providerLabel}</Badge>
               </div>
             </div>
           </div>
+
+          {hasPreview && <ResourcePreview resource={resource} />}
 
           <p className="text-sm leading-relaxed text-muted">{resource.description}</p>
 
@@ -89,11 +109,19 @@ export function ResourceDetailsPage() {
         </Card>
 
         <Card className="flex flex-col gap-3 p-6">
-          <Button onClick={() => setIsDownloadOpen(true)} size="lg">
-            <Download className="size-4" />
-            {t('resource.download')}
-          </Button>
-          <p className="text-center text-xs text-muted">{t('download.disclaimer')}</p>
+          {hasDownload ? (
+            <>
+              <Button onClick={() => setIsDownloadOpen(true)} size="lg">
+                <Download className="size-4" />
+                {actionLabel}
+              </Button>
+              <p className="text-center text-xs text-muted">
+                {t('download.disclaimer', { provider: providerLabel })}
+              </p>
+            </>
+          ) : (
+            <p className="text-center text-sm text-muted">{t('resource.viewOnly')}</p>
+          )}
         </Card>
       </div>
 
@@ -108,11 +136,13 @@ export function ResourceDetailsPage() {
         </div>
       )}
 
-      <DownloadPreparationModal
-        resource={resource}
-        isOpen={isDownloadOpen}
-        onClose={() => setIsDownloadOpen(false)}
-      />
+      {hasDownload && (
+        <DownloadPreparationModal
+          resource={resource}
+          isOpen={isDownloadOpen}
+          onClose={() => setIsDownloadOpen(false)}
+        />
+      )}
     </div>
   );
 }

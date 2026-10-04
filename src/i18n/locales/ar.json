@@ -1,7 +1,7 @@
 {
   "common": {
     "loading": "جارٍ التحميل...",
-    "welcome": "مرحبًا بك في {name}",
+    "welcome": "أهلًا بك في {name}",
     "retry": "إعادة المحاولة",
     "cancel": "إلغاء",
     "save": "حفظ",
@@ -35,17 +35,40 @@
   },
   "resource": {
     "download": "تحميل",
+    "preview": "معاينة",
+    "viewOnly": "مشاهدة فقط",
     "platform": "النظام",
+    "provider": "مكان التخزين",
     "notFound": "لم يتم العثور على هذا المورد",
     "notFoundHint": "قد يكون الرابط غير صحيح أو تمت إزالة المورد.",
     "related": "موارد ذات صلة"
+  },
+  "resourceAction": {
+    "watchVideo": "مشاهدة الفيديو",
+    "watchOnly": "مشاهدة الدورة"
+  },
+  "preview": {
+    "unavailable": "المعاينة غير متاحة لهذا المزود حاليًا",
+    "openOnProvider": "فتح على {provider}"
+  },
+  "video": {
+    "play": "تشغيل",
+    "pause": "إيقاف مؤقت",
+    "rewind": "رجوع 10 ثوانٍ",
+    "forward": "تقديم 10 ثوانٍ",
+    "mute": "كتم الصوت",
+    "unmute": "إلغاء كتم الصوت",
+    "volume": "مستوى الصوت",
+    "fullscreen": "ملء الشاشة",
+    "seek": "شريط التقدم",
+    "quality": "الجودة"
   },
   "download": {
     "title": "تحميل الملف",
     "preparing": "جاري تجهيز رابط التحميل...",
     "ready": "الرابط جاهز",
-    "openDrive": "فتح Google Drive",
-    "disclaimer": "سيتم فتح صفحة الملف على Google Drive، ومنه يمكنك بدء التحميل."
+    "openProvider": "فتح {provider}",
+    "disclaimer": "سيتم فتح صفحة الملف على {provider}، ومنه يمكنك بدء التحميل."
   },
   "file": {
     "download": "تحميل الملف",
@@ -100,7 +123,24 @@
     "confirmDelete": "هل تريد حذف هذا الملف نهائيًا؟",
     "confirmDeleteHint": "لا يمكن التراجع عن هذا الإجراء.",
     "demoModeBanner": "وضع تجريبي محلي: لم يتم ربط قاعدة بيانات حقيقية بعد. أي تعديلات هنا محفوظة على متصفحك فقط.",
-    "ownerOnly": "هذا القسم متاح للمالك فقط."
+    "ownerOnly": "هذا القسم متاح للمالك فقط.",
+    "catalog": "الموارد",
+    "catalogTitle": "إدارة موارد المكتبة",
+    "catalogLocalBanner": "وضع تجريبي محلي: الموارد التي تضيفها أو تعدّلها هنا محفوظة في متصفحك فقط، وليست مرئية لزوار آخرين أو على أجهزة أخرى. لا توجد قاعدة بيانات حقيقية بعد.",
+    "addFiles": "إضافة الملفات",
+    "editResource": "تعديل المورد",
+    "catalogEmpty": "لا توجد موارد بعد",
+    "catalogEmptyHint": "اضغط على \"إضافة الملفات\" لإضافة أول مورد إلى المكتبة.",
+    "columnProvider": "المزود",
+    "columnAccessMode": "طريقة العرض",
+    "columnSeedOrLocal": "المصدر",
+    "seedBadge": "أساسي",
+    "localBadge": "محلي",
+    "confirmDeleteResource": "هل تريد حذف هذا المورد من الكتالوج؟",
+    "confirmDeleteResourceHint": "سيُحذف هذا المورد من متصفحك فقط، ولن يؤثر على الملف الأصلي على Google Drive أو OneDrive.",
+    "resetOverrides": "استعادة الكتالوج الافتراضي",
+    "confirmResetOverrides": "هل تريد التراجع عن جميع التعديلات المحلية؟",
+    "confirmResetOverridesHint": "سيتم حذف كل ما أضفته أو عدّلته في هذا المتصفح، والعودة إلى القائمة الأساسية فقط."
   },
   "auth": {
     "email": "البريد الإلكتروني",
@@ -110,6 +150,63 @@
     "invalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
     "requiredField": "هذا الحقل مطلوب",
     "demoHint": "وضع تجريبي: استخدم owner@example.com بأي كلمة مرور لتسجيل الدخول كمالك."
+  },
+  "wizard": {
+    "title": "إضافة ملف جديد",
+    "titleEdit": "تعديل المورد",
+    "step": "الخطوة {current} من {total}",
+    "next": "التالي",
+    "back": "رجوع",
+    "finish": "إضافة المورد",
+    "finishEdit": "حفظ التعديلات",
+    "saving": "جارٍ الحفظ...",
+    "step1": {
+      "title": "نوع المورد",
+      "description": "اختر نوع الملف الذي تريد إضافته إلى المكتبة."
+    },
+    "step2": {
+      "title": "مزود التخزين",
+      "description": "أدخل رابط صفحة الملف على Google Drive أو OneDrive. لن يقوم الموقع برفع أو تخزين الملف نفسه أبدًا.",
+      "urlLabel": "رابط الملف",
+      "urlPlaceholder": "https://drive.google.com/file/d/....../view?usp=sharing",
+      "detectedProvider": "تم اكتشاف المزود: {provider}"
+    },
+    "step3": {
+      "title": "معلومات المورد",
+      "description": "أدخل التفاصيل التي ستظهر للزوار في المكتبة."
+    },
+    "step4": {
+      "title": "طريقة العرض والوصول",
+      "description": "حدد كيف يمكن للزوار التفاعل مع هذا الملف."
+    },
+    "field": {
+      "title": "العنوان",
+      "description": "الوصف",
+      "category": "التصنيف",
+      "fileType": "نوع الملف (مثال: ZIP، MP4)",
+      "fileSize": "حجم الملف (مثال: 519 MB)",
+      "platform": "النظام أو المنصة (اختياري)",
+      "tags": "كلمات مفتاحية (مفصولة بفواصل)",
+      "featured": "إظهار كمورد مميز في الصفحة الرئيسية"
+    },
+    "accessMode": {
+      "downloadOnly": "تحميل فقط",
+      "downloadOnlyHint": "زر تحميل فقط، بدون معاينة داخل الموقع.",
+      "previewDownload": "معاينة + تحميل",
+      "previewDownloadHint": "معاينة داخل الصفحة بالإضافة إلى زر تحميل.",
+      "viewOnly": "مشاهدة فقط",
+      "viewOnlyHint": "معاينة فقط دون أي زر تحميل أو رابط مباشر ظاهر - مناسب للدورات."
+    },
+    "errors": {
+      "urlRequired": "الرجاء إدخال رابط الملف",
+      "urlUnsafe": "هذا الرابط غير آمن أو غير صالح",
+      "urlUnsupportedProvider": "الرابط يجب أن يكون من Google Drive أو OneDrive",
+      "titleRequired": "الرجاء إدخال عنوان للمورد",
+      "descriptionRequired": "الرجاء إدخال وصف للمورد",
+      "tooLong": "هذا الحقل طويل جدًا (الحد الأقصى {max} حرفًا)"
+    },
+    "success": "تمت إضافة المورد إلى المكتبة",
+    "successEdit": "تم حفظ التعديلات"
   },
   "errors": {
     "generic": "حدث خطأ غير متوقع، الرجاء المحاولة مرة أخرى.",

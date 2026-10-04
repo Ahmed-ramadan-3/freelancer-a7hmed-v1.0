@@ -27,6 +27,9 @@ const AdminDashboardPage = lazy(() =>
 const AdminFilesPage = lazy(() =>
   import('@/pages/admin/AdminFilesPage').then((m) => ({ default: m.AdminFilesPage })),
 );
+const AdminCatalogPage = lazy(() =>
+  import('@/pages/admin/AdminCatalogPage').then((m) => ({ default: m.AdminCatalogPage })),
+);
 const AdminUploadPage = lazy(() =>
   import('@/pages/admin/AdminUploadPage').then((m) => ({ default: m.AdminUploadPage })),
 );
@@ -72,6 +75,7 @@ export const router = createBrowserRouter([
                 element: <AdminLayout />,
                 children: [
                   { index: true, element: <AdminDashboardPage /> },
+                  { path: 'catalog', element: <AdminCatalogPage /> },
                   { path: 'files', element: <AdminFilesPage /> },
                   { path: 'upload', element: <AdminUploadPage /> },
                   {

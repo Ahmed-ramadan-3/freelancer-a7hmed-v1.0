@@ -1,15 +1,16 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from '@/i18n';
-import { resources, getFeaturedResources } from '@/data/resources';
+import { getAllResources, getFeaturedResources } from '@/data/resourceStore';
 import { ResourceFilters } from '@/components/resources/ResourceFilters';
 import { ResourceGrid } from '@/components/resources/ResourceGrid';
 import { FeaturedResource } from '@/components/resources/FeaturedResource';
 
 /**
  * The whole active product (master spec, "Homepage"): a hero line, search,
- * categories, a featured pick, then the full catalog. Everything reads from
- * the static src/data/resources.ts array - no network request, no loading
- * state, because there is nothing to fetch.
+ * categories, a featured pick, then the full catalog. Everything reads
+ * through src/data/resourceStore.ts, which merges the build-time seed with
+ * any admin-added resources saved in this browser - no network request, no
+ * loading state, because there is nothing to fetch.
  */
 export function HomePage() {
   const { t } = useTranslation();
@@ -17,10 +18,11 @@ export function HomePage() {
   const [category, setCategory] = useState<string | null>(null);
 
   const featured = useMemo(() => getFeaturedResources(), []);
+  const allResources = useMemo(() => getAllResources(), []);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return resources.filter((resource) => {
+    return allResources.filter((resource) => {
       const matchesCategory = category ? resource.category === category : true;
       if (!matchesCategory) return false;
       if (!query) return true;
@@ -36,7 +38,7 @@ export function HomePage() {
         .toLowerCase();
       return haystack.includes(query);
     });
-  }, [search, category]);
+  }, [search, category, allResources]);
 
   return (
     <div className="flex flex-col gap-8">

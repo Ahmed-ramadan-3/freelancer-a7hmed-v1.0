@@ -1,8 +1,8 @@
 {
-  "name": "freelancer-a7hmed",
+  "name": "studio-learn",
   "private": true,
   "version": "0.1.0",
-  "description": "SITE_NAME — an Arabic-first digital resource store; the catalog is static, files are hosted on Google Drive.",
+  "description": "Studio Learn — an Arabic-first resource platform; the catalog is static, files are hosted on Google Drive or OneDrive.",
   "type": "module",
   "scripts": {
     "dev": "vite",

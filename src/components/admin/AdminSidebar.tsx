@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Upload, Files, Users } from 'lucide-react';
+import { LayoutDashboard, Upload, Files, FolderCog, Users } from 'lucide-react';
 import { useTranslation } from '@/i18n';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,7 @@ export function AdminSidebar() {
 
   const links = [
     { to: '/admin', label: t('admin.dashboard'), icon: LayoutDashboard, end: true },
+    { to: '/admin/catalog', label: t('admin.catalog'), icon: FolderCog },
     { to: '/admin/files', label: t('admin.files'), icon: Files },
     { to: '/admin/upload', label: t('admin.upload'), icon: Upload },
     ...(isOwner ? [{ to: '/admin/users', label: t('admin.users'), icon: Users }] : []),

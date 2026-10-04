@@ -11,7 +11,6 @@ export type SupportedLanguage = 'ar' | 'en';
 export type ThemePreference = 'light' | 'dark' | 'system';
 
 export interface SiteConfig {
-  /** Placeholder "SITE_NAME" until the owner names the platform. */
   name: string;
   description: Record<SupportedLanguage, string>;
   url: string;
@@ -22,14 +21,14 @@ export interface SiteConfig {
 }
 
 export const siteConfig: SiteConfig = {
-  name: import.meta.env.VITE_SITE_NAME || 'SITE_NAME',
+  name: import.meta.env.VITE_SITE_NAME || 'Studio Learn',
   description: {
     ar:
       import.meta.env.VITE_SITE_DESCRIPTION_AR ||
-      'متجر موارد رقمية صغير: تصفّح، اختر، وحمّل عبر Google Drive',
+      'متجر موارد رقمية صغير: تصفّح، اختر، وحمّل عبر Google Drive أو OneDrive',
     en:
       import.meta.env.VITE_SITE_DESCRIPTION_EN ||
-      'A small digital resource store: browse, pick, and download via Google Drive',
+      'A small digital resource store: browse, pick, and download via Google Drive or OneDrive',
   },
   url: import.meta.env.VITE_SITE_URL || 'http://localhost:5173',
   faviconEmoji: '📦',

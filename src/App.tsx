@@ -4,24 +4,41 @@ import { I18nProvider } from '@/i18n';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { ToastProvider } from '@/context/ToastContext';
 import { SplashScreen } from '@/components/layout/SplashScreen';
+import { SPLASH_DURATION_SECONDS } from '@/config/splash';
 import { router } from '@/routes/router';
 
 /**
- * Readiness gate for the splash screen (master spec, "Download UX" /
- * general polish): shown only for the brief moment the app takes to mount,
- * with no artificial minimum delay. The active public site needs no auth
- * session lookup - it has no backend - so this no longer waits on
- * authService; AuthProvider now lives only inside the lazy-loaded /admin
- * subtree (see src/routes/router.tsx, AdminGate), since the public catalog
- * never needs to know who's signed in.
+ * Readiness gate for the splash screen (master spec, "Loading / Splash
+ * Screen"): a REAL readiness check (there is no backend to wait on for the
+ * active public site - AuthProvider now lives only inside the lazy-loaded
+ * /admin subtree, see routes/router.tsx AdminGate - so this resolves almost
+ * immediately) combined with a BOUNDED presentation delay
+ * (SPLASH_DURATION_SECONDS, 5-10s). The splash disappears only once both are
+ * satisfied, so it is never an indefinite fake loading state, but it also
+ * never just flashes for a few milliseconds - it's a deliberate branding
+ * moment of a known, configured length.
  */
 function useAppReady() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // A microtask tick is enough to let the first paint happen behind the
-    // splash instead of before it - no manufactured waiting.
-    Promise.resolve().then(() => setIsReady(true));
+    let appIsReady = false;
+    let timerElapsed = false;
+    const reveal = () => {
+      if (appIsReady && timerElapsed) setIsReady(true);
+    };
+
+    Promise.resolve().then(() => {
+      appIsReady = true;
+      reveal();
+    });
+
+    const timer = setTimeout(() => {
+      timerElapsed = true;
+      reveal();
+    }, SPLASH_DURATION_SECONDS * 1000);
+
+    return () => clearTimeout(timer);
   }, []);
 
   return isReady;

@@ -3,15 +3,19 @@ import { CheckCircle2, ExternalLink, Loader2 } from 'lucide-react';
 import type { Resource } from '@/types';
 import { useTranslation } from '@/i18n';
 import { DOWNLOAD_PREPARATION_SECONDS } from '@/config/download';
+import { getProviderLabel } from '@/lib/provider';
 import { Modal } from '@/components/ui/Modal';
 
 /**
  * The reusable "preparing your download" experience (master spec, "Download
- * UX"). It never performs the actual 519 MB download itself - Google Drive
- * does, once the visitor presses its own Download button on the exact file
- * page this component links to. This component's only job is a short,
- * honest countdown; it never claims a file is downloading, and the total
- * wait is capped by DOWNLOAD_PREPARATION_SECONDS (config, max 10s).
+ * UX"). It never performs the actual download itself - the provider
+ * (Google Drive or OneDrive) does, once the visitor presses its own
+ * Download button on the exact file page this component links to. This
+ * component's only job is a short, honest countdown; it never claims a file
+ * is downloading, and the total wait is capped by
+ * DOWNLOAD_PREPARATION_SECONDS (config, max 10s). It is provider-generic -
+ * the label and link always come from `resource.provider`/`externalUrl`,
+ * never a hardcoded "Google Drive" string (see src/lib/provider.ts).
  */
 export function DownloadPreparationModal({
   resource,
@@ -35,6 +39,7 @@ export function DownloadPreparationModal({
   }, [isOpen]);
 
   const isReady = secondsLeft === 0;
+  const providerLabel = getProviderLabel(resource.provider);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={t('download.title')}>
@@ -65,14 +70,14 @@ export function DownloadPreparationModal({
 
         {isReady ? (
           <a
-            href={resource.googleDriveUrl}
+            href={resource.externalUrl}
             target="_blank"
             rel="noopener noreferrer"
             onClick={onClose}
             className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-accent px-6 text-sm font-semibold text-accent-ink transition-colors hover:brightness-95"
           >
             <ExternalLink className="size-4" />
-            {t('download.openDrive')}
+            {t('download.openProvider', { provider: providerLabel })}
           </a>
         ) : (
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-border/60">
@@ -85,7 +90,9 @@ export function DownloadPreparationModal({
           </div>
         )}
 
-        <p className="text-xs text-muted">{t('download.disclaimer')}</p>
+        <p className="text-xs text-muted">
+          {t('download.disclaimer', { provider: providerLabel })}
+        </p>
       </div>
     </Modal>
   );

@@ -13,6 +13,8 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_ANON_KEY: string;
   /** Active-site download countdown, in seconds (1-10). See src/config/download.ts. */
   readonly VITE_DOWNLOAD_PREPARATION_SECONDS: string;
+  /** Splash branding duration, in seconds (5-10). See src/config/splash.ts. */
+  readonly VITE_SPLASH_DURATION_SECONDS: string;
   /** "true" to re-enable the preserved-but-disabled /admin routes. */
   readonly VITE_ENABLE_ADMIN: string;
 }

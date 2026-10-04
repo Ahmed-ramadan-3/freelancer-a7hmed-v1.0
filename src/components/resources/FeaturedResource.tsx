@@ -1,19 +1,24 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Download, Sparkles } from 'lucide-react';
+import { Download, Eye, Sparkles } from 'lucide-react';
 import type { Resource } from '@/types';
 import { useTranslation } from '@/i18n';
 import { categoryDefinitions } from '@/config/categories';
+import { getResourceTypeDefinition } from '@/config/resourceTypes';
+import { getActionLabelKey } from '@/lib/resourceModel';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
+import { Button, getButtonClassName } from '@/components/ui/Button';
 import { CategoryIcon } from './CategoryPill';
 import { DownloadPreparationModal } from '@/components/download/DownloadPreparationModal';
 
 export function FeaturedResource({ resource }: { resource: Resource }) {
   const { t, language } = useTranslation();
   const category = categoryDefinitions.find((c) => c.slug === resource.category);
+  const typeDef = getResourceTypeDefinition(resource.resourceType);
   const [isDownloadOpen, setIsDownloadOpen] = useState(false);
+  const actionLabel = t(getActionLabelKey(resource));
+  const opensDownloadModal = resource.accessMode === 'download-only';
 
   return (
     <>
@@ -22,7 +27,7 @@ export function FeaturedResource({ resource }: { resource: Resource }) {
           {resource.icon ? (
             <img src={resource.icon} alt="" className="size-full" />
           ) : (
-            <CategoryIcon icon={category?.icon ?? 'shapes'} className="size-9" />
+            <CategoryIcon icon={typeDef.icon} className="size-9" />
           )}
         </div>
 
@@ -42,10 +47,17 @@ export function FeaturedResource({ resource }: { resource: Resource }) {
         </div>
 
         <div className="flex shrink-0 flex-col gap-2 sm:w-44">
-          <Button onClick={() => setIsDownloadOpen(true)}>
-            <Download className="size-4" />
-            {t('resource.download')}
-          </Button>
+          {opensDownloadModal ? (
+            <Button onClick={() => setIsDownloadOpen(true)}>
+              <Download className="size-4" />
+              {actionLabel}
+            </Button>
+          ) : (
+            <Link to={`/resources/${resource.id}`} className={getButtonClassName()}>
+              <Eye className="size-4" />
+              {actionLabel}
+            </Link>
+          )}
           <Link
             to={`/resources/${resource.id}`}
             className="text-center text-sm font-medium text-accent underline underline-offset-2"
@@ -55,11 +67,13 @@ export function FeaturedResource({ resource }: { resource: Resource }) {
         </div>
       </Card>
 
-      <DownloadPreparationModal
-        resource={resource}
-        isOpen={isDownloadOpen}
-        onClose={() => setIsDownloadOpen(false)}
-      />
+      {opensDownloadModal && (
+        <DownloadPreparationModal
+          resource={resource}
+          isOpen={isDownloadOpen}
+          onClose={() => setIsDownloadOpen(false)}
+        />
+      )}
     </>
   );
 }

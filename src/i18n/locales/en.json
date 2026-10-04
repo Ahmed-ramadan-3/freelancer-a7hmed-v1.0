@@ -35,17 +35,40 @@
   },
   "resource": {
     "download": "Download",
+    "preview": "Preview",
+    "viewOnly": "View only",
     "platform": "Platform",
+    "provider": "Hosted on",
     "notFound": "This resource could not be found",
     "notFoundHint": "The link may be incorrect, or the resource was removed.",
     "related": "Related resources"
+  },
+  "resourceAction": {
+    "watchVideo": "Watch video",
+    "watchOnly": "Watch course"
+  },
+  "preview": {
+    "unavailable": "Preview isn't available for this provider yet",
+    "openOnProvider": "Open on {provider}"
+  },
+  "video": {
+    "play": "Play",
+    "pause": "Pause",
+    "rewind": "Rewind 10 seconds",
+    "forward": "Forward 10 seconds",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "volume": "Volume",
+    "fullscreen": "Fullscreen",
+    "seek": "Seek",
+    "quality": "Quality"
   },
   "download": {
     "title": "Download file",
     "preparing": "Preparing your download link...",
     "ready": "Your link is ready",
-    "openDrive": "Open Google Drive",
-    "disclaimer": "This opens the file's page on Google Drive, where you can start the download."
+    "openProvider": "Open {provider}",
+    "disclaimer": "This opens the file's page on {provider}, where you can start the download."
   },
   "file": {
     "download": "Download file",
@@ -100,7 +123,24 @@
     "confirmDelete": "Delete this file permanently?",
     "confirmDeleteHint": "This action cannot be undone.",
     "demoModeBanner": "Local demo mode: no real database is connected yet. Changes here are saved only in your browser.",
-    "ownerOnly": "This section is available to the owner only."
+    "ownerOnly": "This section is available to the owner only.",
+    "catalog": "Resources",
+    "catalogTitle": "Manage library resources",
+    "catalogLocalBanner": "Local demo mode: resources you add or edit here are saved only in your own browser, and are not visible to other visitors or on other devices. There is no real database yet.",
+    "addFiles": "Add Files",
+    "editResource": "Edit resource",
+    "catalogEmpty": "No resources yet",
+    "catalogEmptyHint": "Click \"Add Files\" to add the first resource to the library.",
+    "columnProvider": "Provider",
+    "columnAccessMode": "Access",
+    "columnSeedOrLocal": "Source",
+    "seedBadge": "Built-in",
+    "localBadge": "Local",
+    "confirmDeleteResource": "Delete this resource from the catalog?",
+    "confirmDeleteResourceHint": "This removes it from your browser only - it has no effect on the original file on Google Drive or OneDrive.",
+    "resetOverrides": "Restore default catalog",
+    "confirmResetOverrides": "Discard every local change?",
+    "confirmResetOverridesHint": "Everything you added or edited in this browser will be removed, reverting to the built-in catalog only."
   },
   "auth": {
     "email": "Email",
@@ -110,6 +150,63 @@
     "invalidCredentials": "Incorrect email or password",
     "requiredField": "This field is required",
     "demoHint": "Demo mode: sign in as owner@example.com with any password."
+  },
+  "wizard": {
+    "title": "Add a new file",
+    "titleEdit": "Edit resource",
+    "step": "Step {current} of {total}",
+    "next": "Next",
+    "back": "Back",
+    "finish": "Add resource",
+    "finishEdit": "Save changes",
+    "saving": "Saving...",
+    "step1": {
+      "title": "Resource type",
+      "description": "Choose the kind of file you're adding to the library."
+    },
+    "step2": {
+      "title": "Storage provider",
+      "description": "Paste the file's share-page link on Google Drive or OneDrive. The site never uploads or hosts the file itself.",
+      "urlLabel": "File link",
+      "urlPlaceholder": "https://drive.google.com/file/d/....../view?usp=sharing",
+      "detectedProvider": "Detected provider: {provider}"
+    },
+    "step3": {
+      "title": "Resource details",
+      "description": "Enter the details visitors will see in the library."
+    },
+    "step4": {
+      "title": "Access and viewing behavior",
+      "description": "Choose how visitors can interact with this file."
+    },
+    "field": {
+      "title": "Title",
+      "description": "Description",
+      "category": "Category",
+      "fileType": "File type (e.g. ZIP, MP4)",
+      "fileSize": "File size (e.g. 519 MB)",
+      "platform": "Platform (optional)",
+      "tags": "Tags (comma-separated)",
+      "featured": "Show as a featured resource on the homepage"
+    },
+    "accessMode": {
+      "downloadOnly": "Download only",
+      "downloadOnlyHint": "A Download button only, no in-site preview.",
+      "previewDownload": "Preview + download",
+      "previewDownloadHint": "An in-page preview plus a Download button.",
+      "viewOnly": "View only",
+      "viewOnlyHint": "Preview only, with no Download button and no visible direct link - suited to courses."
+    },
+    "errors": {
+      "urlRequired": "Please enter the file's link",
+      "urlUnsafe": "This link is unsafe or invalid",
+      "urlUnsupportedProvider": "The link must be a Google Drive or OneDrive link",
+      "titleRequired": "Please enter a title for the resource",
+      "descriptionRequired": "Please enter a description for the resource",
+      "tooLong": "This field is too long (max {max} characters)"
+    },
+    "success": "Resource added to the library",
+    "successEdit": "Changes saved"
   },
   "errors": {
     "generic": "Something went wrong. Please try again.",

@@ -25,6 +25,26 @@ const sizeClasses: Record<Size, string> = {
   lg: 'h-12 px-6 text-base gap-2',
 };
 
+/**
+ * The exact class string a <button variant size> would render, exposed so a
+ * non-<button> element that needs to look like one - e.g. a react-router
+ * <Link> used as a card's primary action for a preview/view-only resource
+ * (see ResourceCard.tsx/FeaturedResource.tsx) - shares the same visual rules
+ * instead of a second, possibly-drifting copy of these Tailwind strings.
+ */
+export function getButtonClassName({
+  variant = 'primary',
+  size = 'md',
+  className,
+}: { variant?: Variant; size?: Size; className?: string } = {}): string {
+  return cn(
+    'inline-flex items-center justify-center rounded-md font-medium transition-colors duration-150 ease-standard disabled:cursor-not-allowed disabled:opacity-50',
+    variantClasses[variant],
+    sizeClasses[size],
+    className,
+  );
+}
+
 /** All comfortable-touch-target sizing lives here (min 44px tap area on
  *  "md"/"lg") so no screen has to remember the rule individually. */
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -33,12 +53,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         disabled={disabled || isLoading}
-        className={cn(
-          'inline-flex items-center justify-center rounded-md font-medium transition-colors duration-150 ease-standard disabled:cursor-not-allowed disabled:opacity-50',
-          variantClasses[variant],
-          sizeClasses[size],
-          className,
-        )}
+        className={getButtonClassName({ variant, size, className })}
         {...props}
       >
         {isLoading && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
