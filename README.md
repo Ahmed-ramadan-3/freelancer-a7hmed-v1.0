@@ -7,12 +7,111 @@ and where every download or view actually happens.** The site never
 uploads, stores, proxies, or hosts a single byte of any resource.
 
 This README documents the current, upgraded state of the project (brand:
-**Studio Learn**), built on top of two earlier phases (a general catalog
-site, then a Google-Drive-only resource store). If you're picking this repo
-up for the first time, you only need this file - it supersedes the two
-previous READMEs that shipped with the earlier phases.
+**Studio Learn**), built on top of three earlier phases (a general catalog
+site, then a Google-Drive-only resource store, then the provider/accessMode
+resource model and admin wizard described in sections 1-12 below). If
+you're picking this repo up for the first time, you only need this file -
+it supersedes the previous READMEs that shipped with the earlier phases.
 
 ---
+
+## 0. Latest upgrade: optional metadata-only backend + admin console
+
+The project still has **no file storage of any kind** - that has not
+changed and never will as part of this line of work. What's new is that
+the resource *catalog* (titles, descriptions, external Drive/OneDrive
+links, and the handful of other metadata fields from section 3) can now
+optionally live in a small database instead of only in each admin's own
+browser, so every visitor on every device sees the same list.
+
+- **Still metadata-only.** The backend table (`supabase/resources_schema.sql`)
+  stores exactly the fields in section 3's `Resource` shape - an id, a
+  title, a description, an external URL, an access mode, and so on. It has
+  no file column, no storage bucket, and no upload endpoint. The actual
+  software, PDF, video, or course a resource points to stays on Google
+  Drive, OneDrive, or wherever it already lived.
+- **Fully optional, off by default.** Leave `VITE_SUPABASE_URL`/
+  `VITE_SUPABASE_ANON_KEY`/the four server-only `ADMIN_*`/
+  `SUPABASE_SERVICE_ROLE_KEY` vars blank (see `.env.example`) and the site
+  behaves exactly as it did before this upgrade - `localStorage`-only
+  admin edits, section 5's honest limitation still applies verbatim.
+- **A new, lightweight admin console** replaces the old flow for adding
+  resources once a backend is configured. It is reached only from the
+  header's three-dot "more options" menu (`src/components/layout/
+  MoreMenu.tsx`) → **Admin**, never from a homepage button, and logs in
+  with a plain **username + password** the owner sets as server
+  environment variables (`ADMIN_USERNAME`/`ADMIN_PASSWORD`) - not the
+  preserved Supabase-Auth login from the earlier phase. See section 9 for
+  how the two admin modes relate.
+- **The existing wizard, cards, countdown, and preview modes are
+  untouched** - the new console reuses `ResourceWizard.tsx` and
+  `AdminCatalogPage.tsx` exactly as they were; only `resourceStore.ts`'s
+  read/write functions grew a second, backend-backed implementation behind
+  the same function signatures (`getAllResources`, `addResource`,
+  `updateResource`, `deleteResource`).
+
+### Setup (optional - skip entirely to keep the previous, backend-free behavior)
+
+1. **Create the table.** In your Supabase project's SQL editor, run
+   `supabase/resources_schema.sql`. This is independent of the preserved
+   `supabase/schema.sql`/`storage_policies.sql` from the earlier Admin
+   phase - it creates its own `public.resources` table and does not modify
+   anything the old Admin panel uses.
+2. **Set the public, client-safe variables** (safe to ship to the browser -
+   these are the same two the preserved Admin panel already uses):
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+3. **Set the four server-only variables** in your hosting platform's
+   environment settings (Vercel → Project Settings → Environment
+   Variables) - **never** with a `VITE_` prefix, never in a file that gets
+   committed:
+   - `ADMIN_USERNAME`, `ADMIN_PASSWORD` - the owner's chosen login. Change
+     either one any time by updating the env var and redeploying; no code
+     change is ever required.
+   - `ADMIN_SESSION_SECRET` - a long random string (`openssl rand -base64
+     32`) used only to sign the admin session cookie.
+   - `SUPABASE_SERVICE_ROLE_KEY` - from Supabase → Project Settings → API.
+     This is the only key allowed to write to the `resources` table (see
+     "Why the service_role key is safe here" below) and is read exclusively
+     inside the serverless functions under `api/`, never sent to a browser.
+4. Deploy. Visiting the site now reads the catalog from the database
+   instead of (only) the build-time seed; opening the three-dot menu →
+   Admin → logging in with the username/password from step 3 lets the
+   owner add, edit, or delete resources that every visitor then sees.
+
+### Why the `service_role` key is safe here
+
+The `resources` table has Row Level Security enabled with exactly one
+policy: public `SELECT` (anyone can read the catalog - it's a public
+website). There is **no** insert/update/delete policy for the `anon` or
+`authenticated` roles at all - by Postgres RLS semantics, no policy means
+no access, full stop. The `service_role` key is the one Supabase key that
+bypasses RLS entirely, which is exactly why it must never reach a browser -
+and it never does: it's read with `process.env.SUPABASE_SERVICE_ROLE_KEY`
+only inside `api/_lib/resourcesRest.ts`, imported only by the three
+protected Edge Functions under `api/resources/` and `api/admin/`, none of
+which is ever bundled into the Vite app the browser downloads (`api/` is
+built and run entirely separately, by Vercel's own Edge Function pipeline,
+not by `vite build`).
+
+### Admin authentication, in brief
+
+- Login (`POST /api/admin/login`) compares the submitted username/password
+  against `ADMIN_USERNAME`/`ADMIN_PASSWORD` using a constant-time string
+  comparison (so a wrong guess can't be timed to learn how many characters
+  matched), then - only on success - issues a signed, expiring (8-hour)
+  session token in an `HttpOnly; Secure; SameSite=Strict` cookie. The
+  token is signed with HMAC-SHA256 (`ADMIN_SESSION_SECRET`, via the
+  platform's built-in Web Crypto - no new dependency), so a client can't
+  forge or extend one.
+- Every write endpoint (`POST /api/resources`, `PATCH`/`DELETE
+  /api/resources/:id`) re-verifies that cookie server-side on every single
+  request via `requireAdminSession()` - the frontend's own belief that it's
+  logged in is never trusted or treated as authorization.
+- If any of the three required env vars is missing, the login page shows a
+  plain "the admin console isn't configured yet" notice instead of a
+  confusing failed-login error, and the login endpoint itself refuses
+  (500) rather than silently accepting an empty password.
 
 ## 1. What changed in this upgrade
 
@@ -162,19 +261,32 @@ Reached from **Admin → الموارد** (`/admin/catalog`,
 preserved `AdminFilesPage` (which still manages the old `FileResource`/
 Supabase model and is untouched).
 
-### ⚠️ Honest limitation: local-only persistence
+### ⚠️ Honest limitation: local-only persistence (only when no backend is configured)
 
-The admin wizard - like the rest of this project - has **no real backend**.
-Anything added or edited through it is saved to `localStorage` in the
-browser/profile the admin used (`src/data/resourceStore.ts`,
-key `studio-learn:catalog-overrides`), merged at read time with the
-build-time seed (`src/data/resources.ts`). It is **not** visible to other
-visitors, not visible on another device, and not visible to the admin
-themselves in a different browser. The Admin Catalog screen states this
-plainly in a banner; this is not a bug to be fixed quietly later, it's the
-honest behavior of a project with no database, by design (see section 9,
-"Adding resources at scale", for what a real backend migration would look
-like).
+Without the optional backend from section 0, the admin wizard has no real
+database behind it. Anything added or edited through it is saved to
+`localStorage` in the browser/profile the admin used
+(`src/data/resourceStore.ts`, key `studio-learn:catalog-overrides`), merged
+at read time with the build-time seed (`src/data/resources.ts`). It is
+**not** visible to other visitors, not visible on another device, and not
+visible to the admin themselves in a different browser. The Admin Catalog
+screen states this plainly in a banner.
+
+Once `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` are set (section 0), this
+limitation goes away for anything added through the new admin console: a
+resource added or edited there is saved to the database and appears to
+every visitor, on every device, immediately. One narrower limitation
+remains, and is worth stating plainly rather than hiding: the handful of
+resources seeded at build time in `src/data/resources.ts` (the original VS
+Code entry, for instance) can't be *deleted* once a backend is active -
+only superseded, by editing that same resource to different content from
+the admin console - since there is no "this seed id was deleted" tombstone
+mechanism. This was a deliberate scope decision (see section 0 and the
+master prompt's "keep the implementation small" rule) rather than an
+oversight; building a tombstone table for a handful of seed rows would be
+real added infrastructure for a problem solvable just as well by editing
+the one or two seed resources directly in `src/data/resources.ts` if one
+ever needs to stop shipping them at all.
 
 ## 6. Preview behavior by resource type
 
@@ -228,35 +340,51 @@ other options for it. For a `view-only` resource, everywhere in the app:
   Supabase **anon** key, which is public-by-design and only used by the
   preserved, disabled-by-default Admin panel.
 
-## 9. Admin panel: preserved, disabled (unchanged from the previous phase)
+## 9. Admin: two independent modes behind one route
 
-The Admin panel (`src/pages/admin/*` other than `AdminCatalogPage.tsx`,
-`src/components/admin/*`, `src/services/*`, `src/lib/supabaseClient.ts`,
-`src/context/AuthContext.tsx`, `supabase/*.sql`) is **fully preserved**,
-none of it deleted:
+`/admin` now resolves to one of two completely separate implementations,
+chosen at build time by the single existing `VITE_ENABLE_ADMIN` flag -
+reused exactly as-is rather than inventing a second switch:
 
-- Every `/admin/*` route - including the new `/admin/catalog` - is
-  lazy-loaded (`React.lazy`), so the entire `@supabase/supabase-js`
-  dependency lives in chunks the browser never fetches unless a route
-  inside `/admin` actually renders.
-- `src/config/admin.ts` reads `VITE_ENABLE_ADMIN`. Unset or `"false"` (the
-  default) → every `/admin/*` URL, including `/admin/catalog`, renders the
-  normal 404 page via `<AdminGate>`, and nothing inside ever mounts.
-- The public `Header` has no link to `/admin` and no auth awareness -
-  `AuthProvider` lives only inside the gated `/admin` subtree.
+**`VITE_ENABLE_ADMIN` unset or `"false"` (the default since this upgrade) -
+the new, lightweight console.** Username/password login against
+`ADMIN_USERNAME`/`ADMIN_PASSWORD` (section 0), reached only via the
+header's three-dot menu, landing on the same `AdminCatalogPage.tsx` (the
+**الموارد**/Catalog screen) the legacy panel also uses - the catalog UI
+itself was not forked or rebuilt, only the auth/session layer underneath
+it is new (`src/context/AdminSessionContext.tsx`,
+`src/routes/AdminSessionGate.tsx`, `api/admin/*`, `api/resources/*`).
 
-To use it locally: `VITE_ENABLE_ADMIN=true` in `.env`, `npm run dev`, visit
-`/admin/login`. Without `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` set,
-it runs the local demo mode in `src/services/mock` (sign in as
-`owner@example.com` with any password). The new **الموارد** (Catalog)
-tab in the admin sidebar is a sibling of the existing **الملفات** (Files)
-tab - they manage two different models and never collide.
+**`VITE_ENABLE_ADMIN=true` - the original Supabase-Auth panel, fully
+preserved, none of it deleted** (`src/pages/admin/*` other than
+`AdminCatalogPage.tsx`, `src/components/admin/*` other than the new
+`MoreMenu.tsx`/`*Providers.tsx`/`AdminConsoleLayout.tsx`, `src/services/*`,
+`src/lib/supabaseClient.ts`, `src/context/AuthContext.tsx`,
+`supabase/schema.sql`, `supabase/storage_policies.sql`). Use this when you
+want the original email/password Supabase-Auth login and its Dashboard/
+Files/Upload/Users screens back - nothing about this upgrade changes how
+that mode behaves. To use it locally: `VITE_ENABLE_ADMIN=true` in `.env`,
+`npm run dev`, visit `/admin/login`. Without `VITE_SUPABASE_URL`/
+`VITE_SUPABASE_ANON_KEY` set, it runs the local demo mode in
+`src/services/mock` (sign in as `owner@example.com` with any password).
+
+Both modes are lazy-loaded (`React.lazy`) behind a shared `<AdminGate>`, so
+whichever one is **not** selected never reaches the browser at all - the
+public bundle carries neither `@supabase/supabase-js` nor the new console's
+code until a visitor actually opens `/admin`. The public `Header` itself
+still has no link to `/admin` and no auth awareness of either mode; the
+three-dot `MoreMenu` is the only entry point in the whole public UI.
 
 ## 10. How to add a resource
 
-**Through the UI (recommended):** `VITE_ENABLE_ADMIN=true` → `/admin/catalog`
-→ "إضافة الملفات" → the 4-step wizard. Saved to this browser's
-`localStorage` immediately (see the honest limitation in section 5).
+**Through the UI (recommended):** open the three-dot menu → **Admin** → log
+in → **الموارد** → "إضافة الملفات" → the same 4-step wizard as before. If
+the optional backend (section 0) is configured, the new resource is saved
+to the database and every visitor sees it immediately, on every device.
+Otherwise it's saved to this browser's `localStorage` only (see the
+honest limitation in section 5). Either way, no source-code edit is
+needed, and the legacy `VITE_ENABLE_ADMIN=true` panel still reaches the
+exact same wizard and screen for anyone who prefers that login.
 
 **By editing code**, for something that should ship in the build-time seed
 for every visitor: add an object to `seedResources` in
@@ -290,16 +418,37 @@ git push -u origin main
 Vercel: import the repo, framework preset **Vite** (auto-detected), build
 command `npm run build`, output directory `dist`. No environment variables
 are required for the active platform to work - `VITE_SITE_NAME` and the
-rest of `.env.example` are all optional overrides. `vercel.json` already
-has the one rewrite rule a client-side-routed SPA needs so that opening
-`/resources/vscode-windows-7` directly doesn't 404.
+rest of `.env.example` are all optional overrides, and the catalog runs in
+`localStorage`-only mode with no backend configured at all. `vercel.json`
+already has the one rewrite rule a client-side-routed SPA needs so that
+opening `/resources/vscode-windows-7` directly doesn't 404, and Vercel
+picks up the Edge Functions under `api/` automatically - no extra
+configuration is needed for those to deploy alongside the static site.
+
+To turn on the optional cross-device backend and the new admin console
+instead, also set (see section 0 for the full walkthrough):
+
+| Variable | Where | Visible to the browser? |
+|---|---|---|
+| `VITE_SUPABASE_URL` | Vercel env vars | Yes (by design - a project URL, not a secret) |
+| `VITE_SUPABASE_ANON_KEY` | Vercel env vars | Yes (by design - public anon key) |
+| `ADMIN_USERNAME` | Vercel env vars, **server-only** | No |
+| `ADMIN_PASSWORD` | Vercel env vars, **server-only** | No |
+| `ADMIN_SESSION_SECRET` | Vercel env vars, **server-only** | No |
+| `SUPABASE_SERVICE_ROLE_KEY` | Vercel env vars, **server-only** | No |
+
+A "server-only" variable must **not** be given a `VITE_` prefix - Vite
+inlines every `VITE_`-prefixed variable into the shipped JS bundle, so
+prefixing any of the last four would leak it to every visitor's browser.
 
 ---
 
 ## Architecture
 
 ```
-GitHub  →  Vercel  →  Vite + React static site  →  Google Drive / OneDrive (file hosts)
+GitHub → Vercel (static site + Edge Functions) → Google Drive / OneDrive (file hosts)
+                      ↓ (optional, metadata only)
+                 Supabase Postgres (resources table, RLS public-read-only)
 ```
 
 ```
@@ -310,7 +459,9 @@ src/
   data/
     resources.ts                seedResources - the build-time catalog.
     resourceStore.ts            THE read/write API: merges seedResources
-                                 with localStorage admin overrides.
+                                 with either localStorage admin overrides
+                                 or the optional backend's rows, behind the
+                                 same function signatures either way.
   lib/
     provider.ts                  URL detection/validation/preview-URL
                                   derivation - the only file that parses a
@@ -318,6 +469,18 @@ src/
     resourceModel.ts             normalizeResource() (backward compat) +
                                   getActionLabelKey().
     validation.ts                Field length limits for the admin wizard.
+    resourceBackend.ts            NEW - public read path: fetch() against
+                                  Supabase PostgREST with the anon key, no
+                                  @supabase/supabase-js import.
+    adminConsoleClient.ts          NEW - admin write/session fetch()
+                                  wrappers calling /api/admin/* and
+                                  /api/resources*.
+  hooks/useCatalogVersion.ts        NEW - re-renders pages once backend
+                                   data arrives (tiny pub-sub, no state
+                                   library).
+  context/AdminSessionContext.tsx   NEW - the new console's session state,
+                                   parallel to (independent of) AuthContext.
+  routes/AdminSessionGate.tsx        NEW - parallel to ProtectedRoute.tsx.
   config/
     resourceTypes.ts              Per-CatalogResourceType icon/label/
                                    allowed access modes/default preview.
@@ -326,27 +489,53 @@ src/
     resources/                    ResourceCard, FeaturedResource,
                                    ResourcePreview, ProviderPreview,
                                    CategoryPill, ResourceGrid/Filters -
-                                   the active storefront UI.
+                                   the active storefront UI, untouched.
     video/VideoPlayer.tsx         Real custom player for direct video files.
     download/DownloadPreparationModal.tsx
-    admin/wizard/                 The 4-step "إضافة الملفات" wizard.
-    admin/                        Preserved Admin nav/layout + new sidebar
-                                  entry for the Catalog screen.
-    layout/, ui/                  Shell, theme/language, shared primitives
-                                  (Modal now has a real focus trap + `size`
-                                  prop for the wizard).
+    admin/wizard/                 The 4-step "إضافة الملفات" wizard,
+                                  untouched except an error message on a
+                                  failed backend save.
+    admin/LegacyAdminProviders.tsx  NEW - lazy-only AuthProvider wrapper
+                                   (keeps @supabase/supabase-js out of the
+                                   main bundle; fixes a bug where it wasn't).
+    admin/NewAdminProviders.tsx      NEW - lazy-only AdminSessionProvider
+                                   wrapper, mirrors the above.
+    admin/AdminConsoleLayout.tsx     NEW - minimal shell for the new console.
+    layout/MoreMenu.tsx               NEW - the three-dot menu; the only
+                                     place /admin is linked from publicly.
+    layout/, ui/                  Shell, theme/language, shared primitives.
   pages/
-    HomePage.tsx, ResourceDetailsPage.tsx   Read through resourceStore.ts.
-    admin/AdminCatalogPage.tsx     New: list/add/edit/delete catalog
-                                   resources, launches the wizard.
+    HomePage.tsx, ResourceDetailsPage.tsx   Read through resourceStore.ts;
+                                 now also re-render via useCatalogVersion().
+    admin/AdminCatalogPage.tsx     List/add/edit/delete catalog resources,
+                                   launches the wizard - shared by both
+                                   admin modes, untouched apart from an
+                                   auto-refresh subscription.
+    admin/AdminConsoleLoginPage.tsx  NEW - username/password login for the
+                                    new console.
     admin/AdminFilesPage.tsx, LoginPage.tsx, etc.   Preserved, untouched.
   services/, lib/supabaseClient.ts, context/AuthContext.tsx
-                                   Preserved Supabase/mock backend - Admin
-                                   panel only, never the active platform.
+                                   Preserved Supabase/mock backend - legacy
+                                   Admin panel only.
   routes/router.tsx               Route tree incl. the VITE_ENABLE_ADMIN
-                                   gate and the new /admin/catalog route.
-supabase/                          Preserved schema - not used by the
-                                   active platform.
+                                   gate choosing between the legacy and new
+                                   admin route subtrees (section 9).
+api/                               NEW - Vercel Edge Functions, built and
+                                   run independently of the Vite app; never
+                                   reaches the browser bundle.
+  admin/login.ts, logout.ts, session.ts   Username/password login, cookie
+                                         session issue/clear/check.
+  resources/index.ts, [id].ts       Protected create/update/delete against
+                                   the resources table (service_role key).
+  _lib/adminAuth.ts, cookies.ts, resourcesRest.ts   Session signing/
+                                   verification, cookie flags, and the
+                                   PostgREST client - server-only code.
+supabase/
+  schema.sql, storage_policies.sql   Preserved, legacy Admin/FileResource
+                                     model - untouched, unrelated table.
+  resources_schema.sql                NEW - the metadata-only `resources`
+                                     table + its public-read-only RLS
+                                     policy (section 0).
 ```
 
 ### Icons
@@ -369,36 +558,57 @@ npm run lint
 npm run build
 ```
 
-**I was not able to run these in this sandbox.** `npm install` fails with
-`403 Forbidden` from `registry.npmjs.org` - confirmed both through `npm
-install` directly and through a raw `curl` to the registry, bypassing the
-HTTPS proxy entirely (the registry host is explicitly excluded from
-proxying, so this is a sandbox-level network policy, not a proxy
-misconfiguration). Nothing downstream of `npm install` (`typecheck`,
-`lint`, `build`) can run without `node_modules`.
+**I was not able to run these in this sandbox, in this phase either.**
+`npm install` was re-attempted (not assumed from the prior phase) and
+still fails with `403 Forbidden` from `registry.npmjs.org` - a
+sandbox-level network policy, not a proxy misconfiguration or anything
+specific to the packages this upgrade would add (it added **zero** new
+npm dependencies - `api/` uses only the Edge runtime's built-in `Request`/
+`Response`/`crypto.subtle`, and the new frontend code uses only plain
+`fetch()`). Nothing downstream of `npm install` (`typecheck`, `lint`,
+`build`) can run without `node_modules`; `npm run build` was still run to
+confirm it fails for exactly that reason (missing `vite`, `@types/node`,
+etc.) and not for any code-level error.
 
 What I did instead, as a substitute - not an equivalent - for the real
-commands:
+commands, re-run fresh for everything this phase touched (now including
+the new `api/` directory, added to `tsconfig.json`'s `include`):
 
-- Parsed **every** `.ts`/`.tsx` file (76 files) with the actual TypeScript
-  compiler's parser (a globally-available `typescript` package, used
-  directly via its API rather than through this project's own
-  dependency-pinned `tsc`) and confirmed **zero syntax errors**. This
-  catches malformed JSX, unbalanced brackets, and invalid syntax, but
-  **not** type errors, since no `node_modules` (and therefore no `@types/*`
-  or the project's own type declarations) could be installed to type-check
-  against.
-- Verified every `@/...` import alias in the codebase resolves to a real
-  file on disk.
+- Parsed **every** `.ts`/`.tsx` file in `src/` and `api/` (94 files) with
+  the actual TypeScript compiler's parser (a globally-available
+  `typescript` package, used directly via its API) and confirmed **zero
+  syntax errors**. This catches malformed JSX, unbalanced brackets, and
+  invalid syntax, but **not** type errors, since no `node_modules` could be
+  installed to type-check against.
+- Verified every `@/...` import alias in `src/` resolves to a real file on
+  disk (235 imports checked), and separately confirmed `api/` never
+  imports across the `@/` build boundary (by design - `api/` is built
+  independently of the Vite app) while its own relative imports (11
+  checked) all resolve.
 - Verified every `t('...')` key used anywhere in the code resolves in both
   `src/i18n/locales/ar.json` and `src/i18n/locales/en.json`, and that the
-  two files have byte-for-byte identical key sets (175 keys each).
+  two files have byte-for-byte identical key sets (182 keys each, up from
+  175 before this phase's additions).
 - Checked for unused named imports (none found), `dangerouslySetInnerHTML`
-  (none found), and that every `target="_blank"` link carries
-  `rel="noopener noreferrer"` (both instances do).
+  (none found), that every `target="_blank"` link carries
+  `rel="noopener noreferrer"` (both instances do), that every issued
+  session cookie carries `HttpOnly`/`Secure`/`SameSite=Strict` (all do,
+  including the logout-clearing one), that the dangerous-URL-scheme list
+  (`javascript:`/`data:`/`vbscript:`/`file:`) is identical on both the
+  client validator and the new server-side one, and that no server-only
+  variable name (`ADMIN_PASSWORD`, `ADMIN_USERNAME`, `ADMIN_SESSION_SECRET`,
+  `SUPABASE_SERVICE_ROLE_KEY`) appears anywhere with a `VITE_` prefix or
+  outside `api/`.
+- Confirmed the new `resources` table's RLS has a public-read policy and
+  **no** write policy of any kind for `anon`/`authenticated` - the write
+  endpoints' authority comes entirely from the server-only `service_role`
+  key, never from a database policy a browser could be tricked into
+  matching.
 - Manually re-read every new and changed file for logical correctness
-  (prop types, hook dependency arrays, discriminated-union narrowing on
-  `validateResourceUrl()`'s result, etc.).
+  (constant-time comparisons actually comparing the full byte arrays
+  rather than short-circuiting, the admin-write endpoints checking the
+  session before touching the database, `resourceStore.ts`'s backend/local
+  branches not sharing mutable state incorrectly, etc.).
 
 **Please run the four commands above yourself** in an environment with
 normal registry access before deploying. Treat this project as a
@@ -409,12 +619,13 @@ matters more than claiming a success I could not actually produce.
 
 ## Adding resources at scale
 
-For day-to-day use, the admin wizard (section 5) is the intended path -
-until the catalog grows past what hand-reviewing a `localStorage`-backed
-list comfortably supports. At that point, the natural next step (not built
-now, since the instructions are to avoid speculative scope) is migrating
-`resourceStore.ts`'s body to real API calls against a backend - the
-preserved `supabase/schema.sql` already has a shape (`files`/`categories`
-tables) close enough to extend for this - while every caller
-(`getAllResources`, `addResource`, etc.) keeps the exact same signature, so
-nothing above `resourceStore.ts` would need to change.
+The migration this section used to describe as a future step - moving
+`resourceStore.ts`'s body to real API calls against a backend, without
+changing any caller's signature - is what section 0 now describes as
+already built and optional. For day-to-day use once that backend is
+configured, the admin console (section 0) is the intended path at any
+scale: every write goes straight to the database and is visible to every
+visitor immediately, with no `localStorage` size or cross-device
+limitation to run into. The one remaining edge case is the handful of
+build-time seed resources, covered honestly in section 5's limitation
+note.
