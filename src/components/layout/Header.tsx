@@ -2,13 +2,15 @@ import { Link } from 'react-router-dom';
 import { siteConfig } from '@/config/site';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
+import { MoreMenu } from './MoreMenu';
 
 /**
- * The public header intentionally knows nothing about authentication or
- * Admin (master spec, "Admin panel - CRITICAL": hidden from public
- * navigation entirely, not just visually collapsed). The Admin area is
- * reached directly at /admin/login when VITE_ENABLE_ADMIN=true - there is
- * no link to it anywhere in the active product's UI.
+ * The public header has no visible Admin button and no auth awareness
+ * beyond the one hidden entry inside MoreMenu (master spec, section 4:
+ * "must NOT appear as a normal public page... accessible from the existing
+ * UI through the existing three-dots / more menu"). There was no such menu
+ * before this - MoreMenu is the smallest one that fits the existing header
+ * language, added for exactly this purpose and carrying nothing else.
  */
 export function Header() {
   return (
@@ -22,6 +24,7 @@ export function Header() {
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
           <ThemeToggle />
+          <MoreMenu />
         </div>
       </div>
     </header>

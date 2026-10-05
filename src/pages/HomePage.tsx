@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from '@/i18n';
 import { getAllResources, getFeaturedResources } from '@/data/resourceStore';
+import { useCatalogVersion } from '@/hooks/useCatalogVersion';
 import { ResourceFilters } from '@/components/resources/ResourceFilters';
 import { ResourceGrid } from '@/components/resources/ResourceGrid';
 import { FeaturedResource } from '@/components/resources/FeaturedResource';
@@ -8,17 +9,20 @@ import { FeaturedResource } from '@/components/resources/FeaturedResource';
 /**
  * The whole active product (master spec, "Homepage"): a hero line, search,
  * categories, a featured pick, then the full catalog. Everything reads
- * through src/data/resourceStore.ts, which merges the build-time seed with
- * any admin-added resources saved in this browser - no network request, no
- * loading state, because there is nothing to fetch.
+ * through src/data/resourceStore.ts, which - depending on whether a
+ * metadata backend is configured - either merges the build-time seed with
+ * admin-added resources saved in this browser, or with resources synced
+ * from that backend (see resourceStore.ts). `catalogVersion` is the signal
+ * that backend data has arrived after the initial, instant render.
  */
 export function HomePage() {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<string | null>(null);
+  const catalogVersion = useCatalogVersion();
 
-  const featured = useMemo(() => getFeaturedResources(), []);
-  const allResources = useMemo(() => getAllResources(), []);
+  const featured = useMemo(() => getFeaturedResources(), [catalogVersion]);
+  const allResources = useMemo(() => getAllResources(), [catalogVersion]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();

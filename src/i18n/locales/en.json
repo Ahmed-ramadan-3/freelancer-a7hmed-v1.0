@@ -19,7 +19,8 @@
     "library": "Library",
     "login": "Log in",
     "logout": "Log out",
-    "admin": "Admin"
+    "admin": "Admin",
+    "more": "More options"
   },
   "home": {
     "title": "Library",
@@ -127,6 +128,7 @@
     "catalog": "Resources",
     "catalogTitle": "Manage library resources",
     "catalogLocalBanner": "Local demo mode: resources you add or edit here are saved only in your own browser, and are not visible to other visitors or on other devices. There is no real database yet.",
+    "catalogBackendBanner": "Connected to a real database: resources you add or edit here appear to every visitor on every device. The file itself always stays on Google Drive or OneDrive; only its metadata is stored.",
     "addFiles": "Add Files",
     "editResource": "Edit resource",
     "catalogEmpty": "No resources yet",
@@ -136,6 +138,7 @@
     "columnSeedOrLocal": "Source",
     "seedBadge": "Built-in",
     "localBadge": "Local",
+    "backendBadge": "Synced",
     "confirmDeleteResource": "Delete this resource from the catalog?",
     "confirmDeleteResourceHint": "This removes it from your browser only - it has no effect on the original file on Google Drive or OneDrive.",
     "resetOverrides": "Restore default catalog",
@@ -144,12 +147,15 @@
   },
   "auth": {
     "email": "Email",
+    "username": "Username",
     "password": "Password",
     "signIn": "Sign in",
     "signingIn": "Signing in...",
     "invalidCredentials": "Incorrect email or password",
+    "invalidUsernameOrPassword": "Incorrect username or password",
     "requiredField": "This field is required",
-    "demoHint": "Demo mode: sign in as owner@example.com with any password."
+    "demoHint": "Demo mode: sign in as owner@example.com with any password.",
+    "consoleNotConfigured": "The admin console isn't configured yet. ADMIN_USERNAME, ADMIN_PASSWORD, and ADMIN_SESSION_SECRET must be set as server environment variables."
   },
   "wizard": {
     "title": "Add a new file",
@@ -203,6 +209,7 @@
       "urlUnsupportedProvider": "The link must be a Google Drive or OneDrive link",
       "titleRequired": "Please enter a title for the resource",
       "descriptionRequired": "Please enter a description for the resource",
+      "saveFailed": "Couldn't save the resource. Check your connection and try again.",
       "tooLong": "This field is too long (max {max} characters)"
     },
     "success": "Resource added to the library",

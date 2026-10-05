@@ -81,6 +81,7 @@ export function ResourceWizard({
   const [touchedUrl, setTouchedUrl] = useState(false);
   const [touchedInfo, setTouchedInfo] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -89,6 +90,7 @@ export function ResourceWizard({
       setTouchedUrl(false);
       setTouchedInfo(false);
       setIsSaving(false);
+      setSubmitError(null);
     }
     // Only resync when the modal transitions open - not on every
     // `initialResource` object identity change while it's already open.
@@ -149,6 +151,7 @@ export function ResourceWizard({
   async function handleFinish() {
     if (!urlResult.ok || !titleResult.ok || !descriptionResult.ok) return;
     setIsSaving(true);
+    setSubmitError(null);
     try {
       const typeDef = getResourceTypeDefinition(draft.resourceType);
       const input = {
@@ -167,13 +170,22 @@ export function ResourceWizard({
         featured: draft.featured,
       };
 
+      // Async in both modes - a real network round trip when a metadata
+      // backend is configured, a trivially-resolved Promise over
+      // localStorage otherwise (see resourceStore.ts) - so this one code
+      // path works unchanged either way.
       if (initialResource) {
-        updateResource(initialResource.id, input);
+        await updateResource(initialResource.id, input);
       } else {
-        addResource(input);
+        await addResource(input);
       }
       onSaved();
       onClose();
+    } catch {
+      // A failed backend write (network error, or the server rejecting the
+      // URL/fields on its own validation - see api/_lib/resourcesRest.ts)
+      // must never look like success. Stay open, on this step, and say so.
+      setSubmitError(t('wizard.errors.saveFailed'));
     } finally {
       setIsSaving(false);
     }
@@ -224,6 +236,8 @@ export function ResourceWizard({
             onChange={(accessMode) => patch({ accessMode })}
           />
         )}
+
+        {submitError && <p className="text-sm text-danger">{submitError}</p>}
 
         <div className="flex items-center justify-between gap-2 border-t border-border pt-4">
           <Button type="button" variant="secondary" onClick={goBack} disabled={step === 1 || isSaving}>

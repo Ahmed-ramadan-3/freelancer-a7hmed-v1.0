@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { Download, FileWarning } from 'lucide-react';
 import { useTranslation } from '@/i18n';
 import { getResourceById, getRelatedResources } from '@/data/resourceStore';
+import { useCatalogVersion } from '@/hooks/useCatalogVersion';
 import { categoryDefinitions } from '@/config/categories';
 import { getActionLabelKey } from '@/lib/resourceModel';
 import { getProviderLabel } from '@/lib/provider';
@@ -29,6 +30,9 @@ export function ResourceDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const { t, language } = useTranslation();
   const [isDownloadOpen, setIsDownloadOpen] = useState(false);
+  // Re-render once backend data arrives after the first, seed-only paint
+  // (see resourceStore.ts / useCatalogVersion.ts) - unused otherwise.
+  useCatalogVersion();
 
   const resource = id ? getResourceById(id) : undefined;
 

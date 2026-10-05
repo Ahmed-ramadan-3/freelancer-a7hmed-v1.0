@@ -1,5 +1,11 @@
 import type { Resource, ResourceInput } from '@/types';
 import { normalizeResource } from '@/lib/resourceModel';
+import {
+  createResourceOnBackend,
+  deleteResourceOnBackend,
+  updateResourceOnBackend,
+} from '@/lib/adminConsoleClient';
+import { fetchPublicResources, isResourceBackendConfigured } from '@/lib/resourceBackend';
 import { seedResources } from './resources';
 
 /**
@@ -9,22 +15,33 @@ import { seedResources } from './resources';
  * `seedResources` directly (see src/data/resources.ts).
  * ---------------------------------------------------------------------------
  *
- * Two sources are merged:
- *  1. `seedResources` - the build-time catalog, shipped with the site.
- *  2. Admin-made additions/edits/deletions, kept in the browser's own
- *     localStorage under STORAGE_KEY.
+ * Two independent modes, chosen once by whether a metadata backend is
+ * configured (`isResourceBackendConfigured`, src/lib/resourceBackend.ts -
+ * same `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` vars the legacy admin
+ * uses, now dual-purpose):
  *
- * ⚠️ IMPORTANT, HONEST LIMITATION (master spec, "Admin behavior": "do NOT
- * pretend that browser-only admin changes are globally persistent across
- * all visitors"): this project still has no backend. A resource the admin
- * adds or edits through the "إضافة الملفات" wizard is saved ONLY in the
- * browser/profile the admin used - another visitor, another browser, or the
- * admin on another device will NOT see it. The Admin Catalog screen states
- * this plainly (see src/pages/admin/AdminCatalogPage.tsx). This module's
- * functions are written as a clean, synchronous CRUD surface specifically so
- * that connecting a real metadata backend later means replacing the body of
- * these functions with real API calls - no caller elsewhere in the app
- * would need to change.
+ * 1. NO backend configured (the project's zero-setup default): exactly the
+ *    original behavior - `seedResources` merged with admin edits kept in
+ *    this browser's own `localStorage`. Honest limitation, documented since
+ *    the project's first phase: these admin changes are per-browser only.
+ *
+ * 2. Backend configured: resource metadata is fetched from Supabase (via
+ *    src/lib/resourceBackend.ts's plain `fetch()`, never `@supabase/
+ *    supabase-js` - see that file's comment) and merged with
+ *    `seedResources`, so the catalog is the same for every visitor and
+ *    device (master spec, section 3). Admin writes go through the protected
+ *    api/resources/*.ts endpoints (src/lib/adminConsoleClient.ts), which
+ *    are the only code allowed to write using the service_role key.
+ *
+ * Reads (`getAllResources` and friends) stay SYNCHRONOUS in both modes, so
+ * no existing call site needs a loading state: in backend mode, the first
+ * call returns `seedResources` immediately (never an empty catalog while a
+ * request is in flight) and a background fetch updates an in-memory cache;
+ * `subscribeToResourceUpdates()` lets a component re-render once that
+ * arrives. Writes (`addResource`/`updateResource`/`deleteResource`) are
+ * ASYNC in both modes - trivially synchronous-and-resolved for the
+ * localStorage path, a real network round trip for the backend path - so
+ * every caller can `await` them uniformly.
  */
 
 const STORAGE_KEY = 'studio-learn:catalog-overrides';
@@ -74,7 +91,75 @@ function generateUniqueId(title: string, existingIds: Set<string>): string {
   return `${base}-${suffix}`;
 }
 
+// ---------------------------------------------------------------------------
+// Backend cache + a tiny pub-sub so components can refresh once the
+// background fetch resolves, without pulling in a state-management library
+// for one event (master spec: "Do NOT add unnecessary packages").
+// ---------------------------------------------------------------------------
+
+let backendCache: Resource[] | null = null;
+let backendLoadPromise: Promise<void> | null = null;
+const listeners = new Set<() => void>();
+
+export function subscribeToResourceUpdates(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function notifyListeners() {
+  listeners.forEach((listener) => listener());
+}
+
+/** Fire-and-forget: kicks off (or reuses) a single in-flight fetch of the
+ *  backend catalog. Safe to call repeatedly - callers don't need to track
+ *  whether a fetch is already running. */
+function refreshFromBackend(): Promise<void> {
+  if (!isResourceBackendConfigured) return Promise.resolve();
+  if (backendLoadPromise) return backendLoadPromise;
+
+  backendLoadPromise = fetchPublicResources()
+    .then((resources) => {
+      backendCache = resources;
+      notifyListeners();
+    })
+    .catch(() => {
+      // Honest degradation: a transient network/Supabase error leaves
+      // backendCache as-is (null on first load -> callers keep seeing
+      // seedResources; already-populated -> callers keep seeing the last
+      // good snapshot) rather than throwing out of a synchronous read API.
+    })
+    .finally(() => {
+      backendLoadPromise = null;
+    });
+
+  return backendLoadPromise;
+}
+
+if (isResourceBackendConfigured) {
+  void refreshFromBackend();
+}
+
+/** Re-fetches immediately (used right after a write, so the admin sees
+ *  their own change without waiting for whatever is left of a prior poll). */
+async function forceRefreshFromBackend(): Promise<void> {
+  backendLoadPromise = null;
+  await refreshFromBackend();
+}
+
 export function getAllResources(): Resource[] {
+  if (isResourceBackendConfigured) {
+    if (!backendCache) {
+      void refreshFromBackend();
+      return seedResources;
+    }
+    const backendIds = new Set(backendCache.map((r) => r.id));
+    // Seed resources stay visible unless the backend has its own row with
+    // the same id (an admin edit of a seed resource) - see README.md for
+    // the one honest gap this implies (a seed resource can't be *deleted*
+    // once a backend is active, only superseded by editing it).
+    return [...seedResources.filter((r) => !backendIds.has(r.id)), ...backendCache];
+  }
+
   const { added, edited, deletedIds } = readOverrides();
   const deleted = new Set(deletedIds);
 
@@ -106,12 +191,18 @@ export function getRelatedResources(resource: Resource, limit = 3): Resource[] {
 }
 
 /** True for a resource that came from the build-time seed rather than the
- *  admin wizard - used by the Admin Catalog screen to label rows. */
+ *  admin - used by the Admin Catalog screen to label rows. */
 export function isSeedResource(id: string): boolean {
   return seedResources.some((resource) => resource.id === id);
 }
 
-export function addResource(input: Omit<ResourceInput, 'id'> & { id?: string }): Resource {
+export async function addResource(input: Omit<ResourceInput, 'id'> & { id?: string }): Promise<Resource> {
+  if (isResourceBackendConfigured) {
+    const created = await createResourceOnBackend(input as ResourceInput);
+    await forceRefreshFromBackend();
+    return created;
+  }
+
   const overrides = readOverrides();
   const existingIds = new Set(getAllResources().map((r) => r.id));
   const id =
@@ -123,7 +214,15 @@ export function addResource(input: Omit<ResourceInput, 'id'> & { id?: string }):
   return resource;
 }
 
-export function updateResource(id: string, patch: Partial<Resource>): Resource {
+export async function updateResource(id: string, patch: Partial<Resource>): Promise<Resource> {
+  if (isResourceBackendConfigured) {
+    const existing = getResourceById(id);
+    if (!existing) throw new Error('Resource not found');
+    const updated = await updateResourceOnBackend(id, { ...existing, ...patch });
+    await forceRefreshFromBackend();
+    return updated;
+  }
+
   const overrides = readOverrides();
 
   const addedIndex = overrides.added.findIndex((resource) => resource.id === id);
@@ -141,7 +240,13 @@ export function updateResource(id: string, patch: Partial<Resource>): Resource {
   return updated;
 }
 
-export function deleteResource(id: string): void {
+export async function deleteResource(id: string): Promise<void> {
+  if (isResourceBackendConfigured) {
+    await deleteResourceOnBackend(id);
+    await forceRefreshFromBackend();
+    return;
+  }
+
   const overrides = readOverrides();
   overrides.added = overrides.added.filter((resource) => resource.id !== id);
   delete overrides.edited[id];
@@ -149,8 +254,10 @@ export function deleteResource(id: string): void {
   writeOverrides(overrides);
 }
 
-/** Admin-facing escape hatch: discard every local addition/edit/deletion and
- *  return to exactly the build-time seed catalog. */
+/** Admin-facing escape hatch, local mode only: discard every local
+ *  addition/edit/deletion and return to exactly the build-time seed
+ *  catalog. Not offered in the UI when a real backend is configured (there,
+ *  "reset" has no single well-defined meaning - see AdminCatalogPage). */
 export function resetLocalCatalogOverrides(): void {
   window.localStorage.removeItem(STORAGE_KEY);
 }

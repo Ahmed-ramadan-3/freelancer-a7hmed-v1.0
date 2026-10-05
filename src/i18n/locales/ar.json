@@ -19,7 +19,8 @@
     "library": "المكتبة",
     "login": "تسجيل الدخول",
     "logout": "تسجيل الخروج",
-    "admin": "لوحة التحكم"
+    "admin": "لوحة التحكم",
+    "more": "خيارات إضافية"
   },
   "home": {
     "title": "المكتبة",
@@ -127,6 +128,7 @@
     "catalog": "الموارد",
     "catalogTitle": "إدارة موارد المكتبة",
     "catalogLocalBanner": "وضع تجريبي محلي: الموارد التي تضيفها أو تعدّلها هنا محفوظة في متصفحك فقط، وليست مرئية لزوار آخرين أو على أجهزة أخرى. لا توجد قاعدة بيانات حقيقية بعد.",
+    "catalogBackendBanner": "متصل بقاعدة بيانات حقيقية: الموارد التي تضيفها أو تعدّلها هنا تظهر لجميع الزوار على كل الأجهزة. يبقى الملف نفسه على Google Drive أو OneDrive دومًا؛ يتم تخزين بياناته الوصفية فقط.",
     "addFiles": "إضافة الملفات",
     "editResource": "تعديل المورد",
     "catalogEmpty": "لا توجد موارد بعد",
@@ -136,6 +138,7 @@
     "columnSeedOrLocal": "المصدر",
     "seedBadge": "أساسي",
     "localBadge": "محلي",
+    "backendBadge": "متزامن",
     "confirmDeleteResource": "هل تريد حذف هذا المورد من الكتالوج؟",
     "confirmDeleteResourceHint": "سيُحذف هذا المورد من متصفحك فقط، ولن يؤثر على الملف الأصلي على Google Drive أو OneDrive.",
     "resetOverrides": "استعادة الكتالوج الافتراضي",
@@ -144,12 +147,15 @@
   },
   "auth": {
     "email": "البريد الإلكتروني",
+    "username": "اسم المستخدم",
     "password": "كلمة المرور",
     "signIn": "تسجيل الدخول",
     "signingIn": "جارٍ تسجيل الدخول...",
     "invalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+    "invalidUsernameOrPassword": "اسم المستخدم أو كلمة المرور غير صحيحة",
     "requiredField": "هذا الحقل مطلوب",
-    "demoHint": "وضع تجريبي: استخدم owner@example.com بأي كلمة مرور لتسجيل الدخول كمالك."
+    "demoHint": "وضع تجريبي: استخدم owner@example.com بأي كلمة مرور لتسجيل الدخول كمالك.",
+    "consoleNotConfigured": "لوحة التحكم غير مُهيأة بعد. يجب ضبط ADMIN_USERNAME و ADMIN_PASSWORD و ADMIN_SESSION_SECRET في متغيرات البيئة على الخادم."
   },
   "wizard": {
     "title": "إضافة ملف جديد",
@@ -203,6 +209,7 @@
       "urlUnsupportedProvider": "الرابط يجب أن يكون من Google Drive أو OneDrive",
       "titleRequired": "الرجاء إدخال عنوان للمورد",
       "descriptionRequired": "الرجاء إدخال وصف للمورد",
+      "saveFailed": "تعذّر حفظ المورد. تحقق من اتصالك وحاول مرة أخرى.",
       "tooLong": "هذا الحقل طويل جدًا (الحد الأقصى {max} حرفًا)"
     },
     "success": "تمت إضافة المورد إلى المكتبة",

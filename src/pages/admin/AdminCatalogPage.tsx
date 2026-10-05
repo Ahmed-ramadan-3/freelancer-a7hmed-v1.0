@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { useTranslation } from '@/i18n';
 import { useToast } from '@/context/ToastContext';
@@ -8,7 +8,9 @@ import {
   getAllResources,
   isSeedResource,
   resetLocalCatalogOverrides,
+  subscribeToResourceUpdates,
 } from '@/data/resourceStore';
+import { isResourceBackendConfigured } from '@/lib/resourceBackend';
 import { categoryDefinitions } from '@/config/categories';
 import { getProviderLabel } from '@/lib/provider';
 import { getActionLabelKey } from '@/lib/resourceModel';
@@ -38,17 +40,30 @@ export function AdminCatalogPage() {
   });
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [isResetOpen, setIsResetOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   function refresh() {
     setResources(getAllResources());
   }
 
-  function confirmDelete() {
+  // Keeps this table in sync with background backend fetches/writes made
+  // elsewhere (the initial load, or another browser tab/admin) - a no-op
+  // subscription in local-only mode, since nothing there ever notifies it.
+  useEffect(() => subscribeToResourceUpdates(refresh), []);
+
+  async function confirmDelete() {
     if (!pendingDeleteId) return;
-    deleteResource(pendingDeleteId);
-    setPendingDeleteId(null);
-    refresh();
-    showToast(t('common.delete'), 'success');
+    setIsDeleting(true);
+    try {
+      await deleteResource(pendingDeleteId);
+      setPendingDeleteId(null);
+      refresh();
+      showToast(t('common.delete'), 'success');
+    } catch {
+      showToast(t('errors.generic'), 'error');
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   function confirmReset() {
@@ -63,10 +78,12 @@ export function AdminCatalogPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold text-ink">{t('admin.catalogTitle')}</h1>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={() => setIsResetOpen(true)}>
-            <RotateCcw className="size-4" />
-            {t('admin.resetOverrides')}
-          </Button>
+          {!isResourceBackendConfigured && (
+            <Button variant="secondary" size="sm" onClick={() => setIsResetOpen(true)}>
+              <RotateCcw className="size-4" />
+              {t('admin.resetOverrides')}
+            </Button>
+          )}
           <Button size="sm" onClick={() => setWizardState({ open: true, resource: undefined })}>
             <Plus className="size-4" />
             {t('admin.addFiles')}
@@ -75,7 +92,7 @@ export function AdminCatalogPage() {
       </div>
 
       <p className="rounded-md border border-accent/30 bg-accent/10 p-3 text-sm text-ink">
-        {t('admin.catalogLocalBanner')}
+        {isResourceBackendConfigured ? t('admin.catalogBackendBanner') : t('admin.catalogLocalBanner')}
       </p>
 
       {resources.length === 0 ? (
@@ -113,7 +130,11 @@ export function AdminCatalogPage() {
                     <td className="py-3 pe-4 text-muted">{t(getActionLabelKey(resource))}</td>
                     <td className="py-3 pe-4">
                       <Badge tone={fromSeed ? 'neutral' : 'teal'}>
-                        {fromSeed ? t('admin.seedBadge') : t('admin.localBadge')}
+                        {fromSeed
+                          ? t('admin.seedBadge')
+                          : isResourceBackendConfigured
+                            ? t('admin.backendBadge')
+                            : t('admin.localBadge')}
                       </Badge>
                     </td>
                     <td className="py-3">
@@ -164,27 +185,29 @@ export function AdminCatalogPage() {
           <Button variant="secondary" onClick={() => setPendingDeleteId(null)}>
             {t('common.cancel')}
           </Button>
-          <Button variant="danger" onClick={confirmDelete}>
+          <Button variant="danger" onClick={confirmDelete} isLoading={isDeleting}>
             {t('common.delete')}
           </Button>
         </div>
       </Modal>
 
-      <Modal
-        isOpen={isResetOpen}
-        onClose={() => setIsResetOpen(false)}
-        title={t('admin.confirmResetOverrides')}
-      >
-        <p className="mb-5 text-sm text-muted">{t('admin.confirmResetOverridesHint')}</p>
-        <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={() => setIsResetOpen(false)}>
-            {t('common.cancel')}
-          </Button>
-          <Button variant="danger" onClick={confirmReset}>
-            {t('admin.resetOverrides')}
-          </Button>
-        </div>
-      </Modal>
+      {!isResourceBackendConfigured && (
+        <Modal
+          isOpen={isResetOpen}
+          onClose={() => setIsResetOpen(false)}
+          title={t('admin.confirmResetOverrides')}
+        >
+          <p className="mb-5 text-sm text-muted">{t('admin.confirmResetOverridesHint')}</p>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setIsResetOpen(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button variant="danger" onClick={confirmReset}>
+              {t('admin.resetOverrides')}
+            </Button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
