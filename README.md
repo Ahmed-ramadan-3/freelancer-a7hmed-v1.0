@@ -21,30 +21,36 @@ The project still has **no file storage of any kind** - that has not
 changed and never will as part of this line of work. What's new is that
 the resource *catalog* (titles, descriptions, external Drive/OneDrive
 links, and the handful of other metadata fields from section 3) can now
-optionally live in a small database instead of only in each admin's own
-browser, so every visitor on every device sees the same list.
+optionally live in a small Neon Postgres database instead of only in each
+admin's own browser, so every visitor on every device sees the same list.
 
-- **Still metadata-only.** The backend table (`supabase/resources_schema.sql`)
+> This backend was originally built against Supabase, then migrated to
+> [Neon](https://neon.tech) Postgres in a later pass. If you're wondering
+> why some comments or variable names still say "Supabase" - that's the
+> **legacy Admin panel** (section 9's `VITE_ENABLE_ADMIN=true` mode), a
+> separate, untouched system with its own separate table. The resources
+> catalog itself no longer talks to Supabase at all.
+
+- **Still metadata-only.** The backend table (`db/resources_schema.sql`)
   stores exactly the fields in section 3's `Resource` shape - an id, a
   title, a description, an external URL, an access mode, and so on. It has
   no file column, no storage bucket, and no upload endpoint. The actual
   software, PDF, video, or course a resource points to stays on Google
   Drive, OneDrive, or wherever it already lived.
-- **Fully optional, off by default.** Leave `VITE_SUPABASE_URL`/
-  `VITE_SUPABASE_ANON_KEY`/the four server-only `ADMIN_*`/
-  `SUPABASE_SERVICE_ROLE_KEY` vars blank (see `.env.example`) and the site
-  behaves exactly as it did before this upgrade - `localStorage`-only
-  admin edits, section 5's honest limitation still applies verbatim.
-- **A new, lightweight admin console** replaces the old flow for adding
-  resources once a backend is configured. It is reached only from the
-  header's three-dot "more options" menu (`src/components/layout/
-  MoreMenu.tsx`) → **Admin**, never from a homepage button, and logs in
-  with a plain **username + password** the owner sets as server
-  environment variables (`ADMIN_USERNAME`/`ADMIN_PASSWORD`) - not the
-  preserved Supabase-Auth login from the earlier phase. See section 9 for
-  how the two admin modes relate.
+- **Fully optional, off by default.** Leave `DATABASE_URL`/
+  `VITE_RESOURCES_BACKEND_ENABLED`/the three server-only `ADMIN_*` vars
+  blank (see `.env.example`) and the site behaves exactly as it did before
+  this upgrade - `localStorage`-only admin edits, section 5's honest
+  limitation still applies verbatim.
+- **A lightweight admin console**, reached only from the header's
+  three-dot "more options" menu (`src/components/layout/MoreMenu.tsx`) →
+  **Admin**, never from a homepage button, and logging in with a plain
+  **username + password** the owner sets as server environment variables
+  (`ADMIN_USERNAME`/`ADMIN_PASSWORD`) - not the preserved Supabase-Auth
+  login from the earlier phase, and **unchanged by the Neon migration**.
+  See section 9 for how the two admin modes relate.
 - **The existing wizard, cards, countdown, and preview modes are
-  untouched** - the new console reuses `ResourceWizard.tsx` and
+  untouched** - the console reuses `ResourceWizard.tsx` and
   `AdminCatalogPage.tsx` exactly as they were; only `resourceStore.ts`'s
   read/write functions grew a second, backend-backed implementation behind
   the same function signatures (`getAllResources`, `addResource`,
@@ -52,16 +58,21 @@ browser, so every visitor on every device sees the same list.
 
 ### Setup (optional - skip entirely to keep the previous, backend-free behavior)
 
-1. **Create the table.** In your Supabase project's SQL editor, run
-   `supabase/resources_schema.sql`. This is independent of the preserved
-   `supabase/schema.sql`/`storage_policies.sql` from the earlier Admin
-   phase - it creates its own `public.resources` table and does not modify
-   anything the old Admin panel uses.
-2. **Set the public, client-safe variables** (safe to ship to the browser -
-   these are the same two the preserved Admin panel already uses):
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-3. **Set the four server-only variables** in your hosting platform's
+1. **Create a free Neon project** at [neon.tech](https://neon.tech) if you
+   don't have one, and copy its connection string (Dashboard → your project
+   → Connection Details → "Pooled connection" works fine - every query this
+   project makes is a single one-shot HTTP call, not a long-lived session).
+2. **Create the table.** Run `db/resources_schema.sql` against that
+   database - e.g. paste it into Neon's own SQL Editor, or
+   `psql "$DATABASE_URL" -f db/resources_schema.sql` from your own machine.
+   This is independent of the preserved `supabase/schema.sql`/
+   `storage_policies.sql` from the earlier Admin phase - a different table,
+   in a different database, and it does not modify anything the old Admin
+   panel uses.
+3. **Set the one public, client-safe variable** (not a secret - carries no
+   connection info, see `.env.example`):
+   - `VITE_RESOURCES_BACKEND_ENABLED=true`
+4. **Set the four server-only variables** in your hosting platform's
    environment settings (Vercel → Project Settings → Environment
    Variables) - **never** with a `VITE_` prefix, never in a file that gets
    committed:
@@ -70,29 +81,39 @@ browser, so every visitor on every device sees the same list.
      change is ever required.
    - `ADMIN_SESSION_SECRET` - a long random string (`openssl rand -base64
      32`) used only to sign the admin session cookie.
-   - `SUPABASE_SERVICE_ROLE_KEY` - from Supabase → Project Settings → API.
-     This is the only key allowed to write to the `resources` table (see
-     "Why the service_role key is safe here" below) and is read exclusively
-     inside the serverless functions under `api/`, never sent to a browser.
-4. Deploy. Visiting the site now reads the catalog from the database
+   - `DATABASE_URL` - the Neon connection string from step 1. This is the
+     one credential that can read and write the `resources` table (see
+     "Why the database is safe to reach only from the server" below) and is
+     read exclusively inside the serverless functions under `api/`, never
+     sent to a browser.
+5. Deploy. Visiting the site now reads the catalog from the database
    instead of (only) the build-time seed; opening the three-dot menu →
-   Admin → logging in with the username/password from step 3 lets the
+   Admin → logging in with the username/password from step 4 lets the
    owner add, edit, or delete resources that every visitor then sees.
 
-### Why the `service_role` key is safe here
+### Why the database is safe to reach only from the server
 
-The `resources` table has Row Level Security enabled with exactly one
-policy: public `SELECT` (anyone can read the catalog - it's a public
-website). There is **no** insert/update/delete policy for the `anon` or
-`authenticated` roles at all - by Postgres RLS semantics, no policy means
-no access, full stop. The `service_role` key is the one Supabase key that
-bypasses RLS entirely, which is exactly why it must never reach a browser -
-and it never does: it's read with `process.env.SUPABASE_SERVICE_ROLE_KEY`
-only inside `api/_lib/resourcesRest.ts`, imported only by the three
-protected Edge Functions under `api/resources/` and `api/admin/`, none of
-which is ever bundled into the Vite app the browser downloads (`api/` is
-built and run entirely separately, by Vercel's own Edge Function pipeline,
-not by `vite build`).
+Neon is plain Postgres - it has no Supabase-style PostgREST/RLS layer or
+public "anon key" built in, and this project doesn't build one on top of
+it either. Instead, there is simply no path from the browser to the
+database at all: every single access to the `resources` table, reads
+included, goes through this project's own server-side Vercel Edge
+Functions (`api/resources/index.ts` for reads, `api/resources/index.ts`
+and `api/resources/[id].ts` for admin writes), which hold the only
+credential that can reach it, `DATABASE_URL` - read with
+`process.env.DATABASE_URL` only inside `api/_lib/resourcesDb.ts`, never
+with the browser-visible `import.meta.env`, and never bundled into the
+Vite app the browser downloads (`api/` is built and run entirely
+separately, by Vercel's own Edge Function pipeline, not by `vite build`).
+Public reads are intentionally unauthenticated (it's a public catalog -
+there's nothing in that table a visitor couldn't already see on the site),
+but every write additionally requires the admin session cookie
+(`requireAdminSession`, unchanged by this migration) before a single query
+runs - a signed-out `POST`/`PATCH`/`DELETE` never reaches the database at
+all. Every query is a parameterized `sql\`...\`` tagged-template call
+(`@neondatabase/serverless`), never string-built SQL, which is what
+actually rules out SQL injection from a malicious value in a resource's
+title or description.
 
 ### Admin authentication, in brief
 
@@ -337,8 +358,10 @@ other options for it. For a `view-only` resource, everywhere in the app:
 - Admin wizard text fields are length-capped both in the UI (`maxLength`)
   and again at submit time (`src/lib/validation.ts`).
 - No secrets of any kind live in frontend code or env files beyond the
-  Supabase **anon** key, which is public-by-design and only used by the
-  preserved, disabled-by-default Admin panel.
+  Supabase **anon** key (public-by-design, used only by the preserved,
+  disabled-by-default legacy Admin panel). `DATABASE_URL` and the admin
+  console's credentials are never given a `VITE_` prefix and are read only
+  inside `api/` - see section 0.
 
 ## 9. Admin: two independent modes behind one route
 
@@ -425,21 +448,23 @@ opening `/resources/vscode-windows-7` directly doesn't 404, and Vercel
 picks up the Edge Functions under `api/` automatically - no extra
 configuration is needed for those to deploy alongside the static site.
 
-To turn on the optional cross-device backend and the new admin console
+To turn on the optional cross-device backend and the admin console
 instead, also set (see section 0 for the full walkthrough):
 
 | Variable | Where | Visible to the browser? |
 |---|---|---|
-| `VITE_SUPABASE_URL` | Vercel env vars | Yes (by design - a project URL, not a secret) |
-| `VITE_SUPABASE_ANON_KEY` | Vercel env vars | Yes (by design - public anon key) |
+| `VITE_RESOURCES_BACKEND_ENABLED` | Vercel env vars | Yes (by design - a plain `true`/`false` flag, not a secret) |
 | `ADMIN_USERNAME` | Vercel env vars, **server-only** | No |
 | `ADMIN_PASSWORD` | Vercel env vars, **server-only** | No |
 | `ADMIN_SESSION_SECRET` | Vercel env vars, **server-only** | No |
-| `SUPABASE_SERVICE_ROLE_KEY` | Vercel env vars, **server-only** | No |
+| `DATABASE_URL` | Vercel env vars, **server-only** | No |
 
 A "server-only" variable must **not** be given a `VITE_` prefix - Vite
 inlines every `VITE_`-prefixed variable into the shipped JS bundle, so
 prefixing any of the last four would leak it to every visitor's browser.
+(`VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` are a separate pair, needed
+only if you also turn on the legacy `VITE_ENABLE_ADMIN=true` panel - see
+section 9.)
 
 ---
 
@@ -447,8 +472,8 @@ prefixing any of the last four would leak it to every visitor's browser.
 
 ```
 GitHub → Vercel (static site + Edge Functions) → Google Drive / OneDrive (file hosts)
-                      ↓ (optional, metadata only)
-                 Supabase Postgres (resources table, RLS public-read-only)
+                      ↓ (optional, metadata only, server-side only)
+                 Neon Postgres (resources table)
 ```
 
 ```
@@ -470,8 +495,9 @@ src/
                                   getActionLabelKey().
     validation.ts                Field length limits for the admin wizard.
     resourceBackend.ts            NEW - public read path: fetch() against
-                                  Supabase PostgREST with the anon key, no
-                                  @supabase/supabase-js import.
+                                  this site's own GET /api/resources (never
+                                  a direct database connection from the
+                                  browser).
     adminConsoleClient.ts          NEW - admin write/session fetch()
                                   wrappers calling /api/admin/* and
                                   /api/resources*.
@@ -525,17 +551,24 @@ api/                               NEW - Vercel Edge Functions, built and
                                    reaches the browser bundle.
   admin/login.ts, logout.ts, session.ts   Username/password login, cookie
                                          session issue/clear/check.
-  resources/index.ts, [id].ts       Protected create/update/delete against
-                                   the resources table (service_role key).
-  _lib/adminAuth.ts, cookies.ts, resourcesRest.ts   Session signing/
+  resources/index.ts                GET (public) + POST (admin-protected)
+                                   against the resources table.
+  resources/[id].ts                 PATCH/DELETE (admin-protected).
+  _lib/adminAuth.ts, cookies.ts, resourcesDb.ts   Session signing/
                                    verification, cookie flags, and the
-                                   PostgREST client - server-only code.
+                                   Neon `sql` tagged-template client
+                                   (`@neondatabase/serverless`) - server-only
+                                   code, `DATABASE_URL` read here only.
 supabase/
   schema.sql, storage_policies.sql   Preserved, legacy Admin/FileResource
                                      model - untouched, unrelated table.
-  resources_schema.sql                NEW - the metadata-only `resources`
-                                     table + its public-read-only RLS
-                                     policy (section 0).
+                                     (The resources catalog's own schema
+                                     lives in db/, not here - see below.)
+db/
+  resources_schema.sql                The metadata-only `resources` table
+                                     for Neon (section 0) - no RLS/policies,
+                                     since every access already goes
+                                     through api/'s own server-side auth.
 ```
 
 ### Icons
@@ -559,16 +592,17 @@ npm run build
 ```
 
 **I was not able to run these in this sandbox, in this phase either.**
-`npm install` was re-attempted (not assumed from the prior phase) and
-still fails with `403 Forbidden` from `registry.npmjs.org` - a
-sandbox-level network policy, not a proxy misconfiguration or anything
-specific to the packages this upgrade would add (it added **zero** new
-npm dependencies - `api/` uses only the Edge runtime's built-in `Request`/
-`Response`/`crypto.subtle`, and the new frontend code uses only plain
-`fetch()`). Nothing downstream of `npm install` (`typecheck`, `lint`,
-`build`) can run without `node_modules`; `npm run build` was still run to
-confirm it fails for exactly that reason (missing `vite`, `@types/node`,
-etc.) and not for any code-level error.
+`npm install` was re-attempted (not assumed from any earlier phase) and
+still fails with `403 Forbidden` from `registry.npmjs.org` - confirmed
+freshest on this phase's own new dependency
+(`@neondatabase/serverless`), so this is a sandbox-level network policy,
+not anything specific to a particular package. This phase adds exactly
+**one** new npm dependency (`@neondatabase/serverless`, for the Edge
+Function's Postgres queries); nothing else in `api/` or the frontend
+needed a new package. Nothing downstream of `npm install` (`typecheck`,
+`lint`, `build`) can run without `node_modules`; `npm run build` was still
+run to confirm it fails for exactly that reason (missing `vite`,
+`@types/node`, etc.) and not for any code-level error.
 
 What I did instead, as a substitute - not an equivalent - for the real
 commands, re-run fresh for everything this phase touched (now including
@@ -595,20 +629,25 @@ the new `api/` directory, added to `tsconfig.json`'s `include`):
   session cookie carries `HttpOnly`/`Secure`/`SameSite=Strict` (all do,
   including the logout-clearing one), that the dangerous-URL-scheme list
   (`javascript:`/`data:`/`vbscript:`/`file:`) is identical on both the
-  client validator and the new server-side one, and that no server-only
-  variable name (`ADMIN_PASSWORD`, `ADMIN_USERNAME`, `ADMIN_SESSION_SECRET`,
-  `SUPABASE_SERVICE_ROLE_KEY`) appears anywhere with a `VITE_` prefix or
-  outside `api/`.
-- Confirmed the new `resources` table's RLS has a public-read policy and
-  **no** write policy of any kind for `anon`/`authenticated` - the write
-  endpoints' authority comes entirely from the server-only `service_role`
-  key, never from a database policy a browser could be tricked into
-  matching.
+  client validator and the server-side one, and that `DATABASE_URL` and the
+  admin credentials never appear with a `VITE_` prefix or anywhere outside
+  `api/` (only in explanatory comments, never as a value).
+- Confirmed every query in `api/_lib/resourcesDb.ts` is a parameterized
+  `` sql`...` `` tagged-template call (never a string-concatenated query),
+  that `GET /api/resources` is the only unauthenticated route and that both
+  `POST /api/resources` and `PATCH`/`DELETE /api/resources/:id` call
+  `requireAdminSession()` before touching the database, and that
+  `deleteResourceRow()` only ever runs a `DELETE FROM resources`, with no
+  code path able to reach a Drive/OneDrive file.
 - Manually re-read every new and changed file for logical correctness
-  (constant-time comparisons actually comparing the full byte arrays
-  rather than short-circuiting, the admin-write endpoints checking the
-  session before touching the database, `resourceStore.ts`'s backend/local
-  branches not sharing mutable state incorrectly, etc.).
+  (the admin-write endpoints checking the session before running a query,
+  `resourceStore.ts`'s backend/local branches not sharing mutable state
+  incorrectly, the Neon `tags` column round-tripping as a Postgres
+  `text[]`, etc.). The exact shape of `@neondatabase/serverless`'s
+  `neon()` return type could not be verified against its real published
+  types in this sandbox (same blocked `npm install`), only against its
+  documented, long-stable public API from training knowledge - worth a
+  second look once a real `npm install`/`typecheck` can run.
 
 **Please run the four commands above yourself** in an environment with
 normal registry access before deploying. Treat this project as a
