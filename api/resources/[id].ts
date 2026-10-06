@@ -1,10 +1,10 @@
 import { requireAdminSession } from '../_lib/adminAuth';
 import {
   deleteResourceRow,
-  getSupabaseAdminConfig,
+  getSql,
   updateResourceRow,
   validateResourceBody,
-} from '../_lib/resourcesRest';
+} from '../_lib/resourcesDb';
 
 export const config = { runtime: 'edge' };
 
@@ -36,8 +36,8 @@ export default async function handler(req: Request): Promise<Response> {
   const authorized = await requireAdminSession(req);
   if (!authorized) return json({ ok: false, error: 'unauthorized' }, 401);
 
-  const config = getSupabaseAdminConfig();
-  if (!config) return json({ ok: false, error: 'backend_not_configured' }, 500);
+  const sql = getSql();
+  if (!sql) return json({ ok: false, error: 'backend_not_configured' }, 500);
 
   if (req.method === 'PATCH') {
     let body: unknown;
@@ -51,7 +51,7 @@ export default async function handler(req: Request): Promise<Response> {
       return json({ ok: false, error: validation.error ?? 'invalid_body' }, 400);
     }
     try {
-      const updated = await updateResourceRow(config, id, validation.value);
+      const updated = await updateResourceRow(sql, id, validation.value);
       return json({ ok: true, resource: updated }, 200);
     } catch (error) {
       const notFound = error instanceof Error && error.message === 'not_found';
@@ -61,7 +61,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   if (req.method === 'DELETE') {
     try {
-      await deleteResourceRow(config, id);
+      await deleteResourceRow(sql, id);
       return json({ ok: true }, 200);
     } catch (error) {
       return json({ ok: false, error: 'delete_failed', detail: String(error) }, 500);
