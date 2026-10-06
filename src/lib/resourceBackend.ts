@@ -2,25 +2,25 @@ import type { Resource } from '@/types';
 import { normalizeResource } from './resourceModel';
 
 /**
- * The PUBLIC read path to the catalog's metadata backend (master spec,
- * section 3: "the resource catalog needs to be synchronized for all
- * visitors/devices"). This deliberately uses plain `fetch()` against
- * Supabase's PostgREST endpoint instead of importing `@supabase/
- * supabase-js` - that package is reserved for the lazy-loaded legacy admin
- * chunk only (see src/lib/supabaseClient.ts's own comment); importing it
- * here would pull the whole SDK into the main bundle every visitor
- * downloads, which is exactly what that earlier design decision was meant
- * to prevent. A few CRUD-free GET requests don't need an SDK.
+ * The PUBLIC read path to the catalog's metadata backend (master spec:
+ * "the resource catalog needs to be synchronized for all visitors/
+ * devices"). This calls this site's own `GET /api/resources` - a
+ * same-origin, same-domain request - which is the only thing that talks to
+ * the Neon database directly (api/_lib/resourcesDb.ts, server-only,
+ * `DATABASE_URL`). The browser never holds a database connection string or
+ * credential of any kind for this.
  *
- * Only the public anon key is ever used from this file. It is safe in the
- * browser bundle because `resources` has no write policy at all for it -
- * see supabase/resources_schema.sql.
+ * `isResourceBackendConfigured` is a plain, non-secret boolean the owner
+ * sets at build time (`VITE_RESOURCES_BACKEND_ENABLED`) to say "a Neon
+ * database is configured, go ahead and sync" - it carries no connection
+ * info itself, unlike the Supabase anon key this file used before this
+ * phase's migration. If it's on but the server-side `DATABASE_URL` turns
+ * out to be missing, `/api/resources` simply answers with an error and
+ * `resourceStore.ts` degrades to the local seed, exactly as it already did
+ * for any other network failure.
  */
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-export const isResourceBackendConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+export const isResourceBackendConfigured = import.meta.env.VITE_RESOURCES_BACKEND_ENABLED === 'true';
 
 export interface ResourceRow {
   id: string;
@@ -48,7 +48,7 @@ export function rowToResource(row: ResourceRow): Resource {
     description: row.description,
     category: row.category,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the DB's
-    // own CHECK constraints (resources_schema.sql) are the real guarantee
+    // own CHECK constraints (db/resources_schema.sql) are the real guarantee
     // that these strings are one of the known enum values.
     resourceType: row.resource_type as any,
     fileType: row.file_type,
@@ -68,17 +68,13 @@ export function rowToResource(row: ResourceRow): Resource {
   });
 }
 
-/** Fetches every row visible to the anon key (i.e. every resource - see the
- *  public-read RLS policy). Throws on a network or server error; callers
- *  decide how to degrade (resourceStore.ts keeps serving the local seed). */
+/** Fetches every resource from the database, via this site's own public API
+ *  route. Throws on a network or server error; callers decide how to
+ *  degrade (resourceStore.ts keeps serving the local seed). */
 export async function fetchPublicResources(): Promise<Resource[]> {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/resources?select=*&order=created_at.asc`, {
-    headers: {
-      apikey: SUPABASE_ANON_KEY as string,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    },
-  });
+  const res = await fetch('/api/resources');
   if (!res.ok) throw new Error(`resources_fetch_failed:${res.status}`);
-  const rows = (await res.json()) as ResourceRow[];
-  return rows.map(rowToResource);
+  const data = (await res.json()) as { ok?: boolean; resources?: ResourceRow[] };
+  if (!data.ok || !Array.isArray(data.resources)) throw new Error('resources_fetch_invalid');
+  return data.resources.map(rowToResource);
 }
