@@ -183,7 +183,35 @@ export function validateResourceBody(body: unknown, existingId?: string): Valida
 // section and README.md section 0.
 // ---------------------------------------------------------------------------
 
-type Sql = ReturnType<typeof neon>;
+/**
+ * `neon()`'s result shape depends on two boolean options (`arrayMode`,
+ * `fullResults`) that can also be flipped globally at runtime
+ * (`neonConfig`), so its own type - when called with no options object at
+ * all - correctly reports the full range it could produce:
+ * `any[][] | Record<string, any>[] | FullQueryResults<boolean>`. That
+ * union is what was breaking the build (`rows[0]`/`rows.length` aren't
+ * valid on every member of it - a plain object result has no numeric
+ * index or `.length`).
+ *
+ * This project never wants array-mode or "full results" (`rowCount`,
+ * `fields`, etc.) - just the plain `{ column: value }` rows `returning *`
+ * already gives us - so both options are pinned to `false` explicitly
+ * right here, which is what actually narrows every call made through this
+ * `sql` function down to the single concrete shape `Promise<Record<string,
+ * any>[]>`. Routing the call through this one small, non-overloaded helper
+ * (rather than writing `type Sql = ReturnType<typeof neon>` directly) also
+ * sidesteps a separate TypeScript quirk: `ReturnType<T>` on an overloaded
+ * function always resolves against that function's last declared
+ * signature, not the particular overload a given call site actually uses -
+ * `createNeonSql`'s return type, by contrast, is inferred from the one
+ * real call expression in its body, so `ReturnType<typeof createNeonSql>`
+ * is exact.
+ */
+function createNeonSql(databaseUrl: string) {
+  return neon(databaseUrl, { arrayMode: false, fullResults: false });
+}
+
+type Sql = ReturnType<typeof createNeonSql>;
 
 let cachedSql: Sql | null = null;
 let cachedUrl: string | null = null;
@@ -198,7 +226,7 @@ export function getSql(): Sql | null {
   const url = process.env.DATABASE_URL;
   if (!url) return null;
   if (!cachedSql || cachedUrl !== url) {
-    cachedSql = neon(url);
+    cachedSql = createNeonSql(url);
     cachedUrl = url;
   }
   return cachedSql;
@@ -211,7 +239,11 @@ export async function selectAllResourceRows(sql: Sql): Promise<ResourceRow[]> {
   const rows = await sql`
     select * from resources order by created_at asc
   `;
-  return rows as unknown as ResourceRow[];
+  // `rows` is `Record<string, any>[]` here (pinned by createNeonSql's
+  // options above) - the DB's own CHECK constraints (db/resources_schema.sql)
+  // are the real guarantee that each row actually matches ResourceRow's
+  // narrower field types, same as the rest of this file's enum-field casts.
+  return rows as ResourceRow[];
 }
 
 export async function insertResourceRow(sql: Sql, row: ValidatedResourceInput): Promise<ResourceRow> {
@@ -228,7 +260,7 @@ export async function insertResourceRow(sql: Sql, row: ValidatedResourceInput): 
     )
     returning *
   `;
-  return rows[0] as unknown as ResourceRow;
+  return rows[0] as ResourceRow;
 }
 
 export async function updateResourceRow(
@@ -257,7 +289,7 @@ export async function updateResourceRow(
     returning *
   `;
   if (rows.length === 0) throw new Error('not_found');
-  return rows[0] as unknown as ResourceRow;
+  return rows[0] as ResourceRow;
 }
 
 /** Deletes only the metadata row - see api/resources/[id].ts's own comment:
