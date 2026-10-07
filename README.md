@@ -643,11 +643,26 @@ the new `api/` directory, added to `tsconfig.json`'s `include`):
   (the admin-write endpoints checking the session before running a query,
   `resourceStore.ts`'s backend/local branches not sharing mutable state
   incorrectly, the Neon `tags` column round-tripping as a Postgres
-  `text[]`, etc.). The exact shape of `@neondatabase/serverless`'s
-  `neon()` return type could not be verified against its real published
-  types in this sandbox (same blocked `npm install`), only against its
-  documented, long-stable public API from training knowledge - worth a
-  second look once a real `npm install`/`typecheck` can run.
+  `text[]`, etc.).
+
+**Known-fixed build error (from a real Vercel build, not this sandbox):**
+a first version of `api/_lib/resourcesDb.ts` derived its `Sql` type as
+`ReturnType<typeof neon>`, which a real `tsc` resolved to the broad union
+`any[][] | Record<string, any>[] | FullQueryResults<boolean>` -
+`neon()`'s result shape depends on two options (`arrayMode`, `fullResults`)
+that can also be flipped globally at runtime, so its type - uncalled, with
+no options pinned - correctly reports every shape it could produce. That
+broke `rows[0]`/`rows.length` wherever a row was read back after an
+insert/update. The fix: `createNeonSql()`, a small non-overloaded wrapper
+that calls `neon(databaseUrl, { arrayMode: false, fullResults: false })`
+and is the one `Sql` is now derived from - pinning every query made
+through it to the single concrete shape `Promise<Record<string, any>[]>`,
+with no `any` casts anywhere in the file (just a direct, narrowing
+`as ResourceRow`/`as ResourceRow[]` from that concrete object-array type).
+This was caught and fixed from the real error message a production Vercel
+build produced - this sandbox still cannot install
+`@neondatabase/serverless` to re-verify it with a real `tsc` run, so a
+second look after your next `npm run build` is still worthwhile.
 
 **Please run the four commands above yourself** in an environment with
 normal registry access before deploying. Treat this project as a
